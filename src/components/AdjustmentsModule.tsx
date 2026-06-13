@@ -346,8 +346,8 @@ export const AdjustmentsModule: React.FC<AdjustmentsModuleProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-slate-500 font-bold block mb-1">{lang === 'ar' ? 'السبب بالتفصيل (English)' : 'Justification Reason (English)'}</label>
-                <input
-                  type="text"
+                <textarea
+                  rows={3}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="e.g. Compensation for shipping damages or service audit drop"
@@ -356,8 +356,8 @@ export const AdjustmentsModule: React.FC<AdjustmentsModuleProps> = ({
               </div>
               <div>
                 <label className="text-slate-500 font-bold block mb-1">{lang === 'ar' ? 'السبب بالتفصيل (باللغة العربية)' : 'Justification Reason (Arabic)'}</label>
-                <input
-                  type="text"
+                <textarea
+                  rows={3}
                   value={reasonAr}
                   onChange={(e) => setReasonAr(e.target.value)}
                   placeholder="مثال: خصم تسوية لقاء عجز في تلبية متطلبات النظام المتفق عليها"

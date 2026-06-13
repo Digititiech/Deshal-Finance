@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Vendor, Payable, PayablePayment, Branch, UserRole, SystemSettings, InvoiceStatus } from '../types';
 import { 
   PlusCircle, 
@@ -36,6 +36,8 @@ interface PayablesModuleProps {
   lang: 'en' | 'ar';
   userRole?: UserRole;
   systemSettings: SystemSettings;
+  quickActionTrigger?: string | null;
+  clearQuickAction?: () => void;
 }
 
 export const PayablesModule: React.FC<PayablesModuleProps> = ({
@@ -54,7 +56,9 @@ export const PayablesModule: React.FC<PayablesModuleProps> = ({
   deletePayablePayment,
   lang,
   userRole,
-  systemSettings
+  systemSettings,
+  quickActionTrigger,
+  clearQuickAction
 }) => {
   // Navigation Tabs: 'PAYABLES' | 'VENDORS'
   const [activeSubTab, setActiveSubTab] = useState<'PAYABLES' | 'VENDORS'>('PAYABLES');
@@ -203,6 +207,18 @@ export const PayablesModule: React.FC<PayablesModuleProps> = ({
     setErrorMsg(null);
     setShowPayableModal(true);
   };
+
+  useEffect(() => {
+    if (quickActionTrigger === 'RECORD_BILL') {
+      setActiveSubTab('PAYABLES');
+      handleOpenCreatePayable();
+      if (clearQuickAction) clearQuickAction();
+    } else if (quickActionTrigger === 'ADD_VENDOR') {
+      setActiveSubTab('VENDORS');
+      handleOpenCreateVendor();
+      if (clearQuickAction) clearQuickAction();
+    }
+  }, [quickActionTrigger, clearQuickAction, vendors, branches]);
 
   const handlePayableSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -844,8 +860,8 @@ export const PayablesModule: React.FC<PayablesModuleProps> = ({
               <div className="grid grid-cols-1 gap-2">
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'المقر المسجل (ENG)' : 'Registered Address (English)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={vAddress}
                     onChange={(e) => setVAddress(e.target.value)}
                     className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm"
@@ -853,8 +869,8 @@ export const PayablesModule: React.FC<PayablesModuleProps> = ({
                 </div>
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'المقر المسجل (عربي)' : 'Registered Address (Arabic)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={vAddressAr}
                     onChange={(e) => setVAddressAr(e.target.value)}
                     className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm"
@@ -994,8 +1010,8 @@ export const PayablesModule: React.FC<PayablesModuleProps> = ({
                 {/* Desc Eng */}
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'وصف أو بيان المعاملة (ENG)' : 'Bill Description (English)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     required
                     value={pDesc}
                     onChange={(e) => setPDesc(e.target.value)}
@@ -1007,8 +1023,8 @@ export const PayablesModule: React.FC<PayablesModuleProps> = ({
                 {/* Desc Ar */}
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'وصف أو بيان المعاملة (عربي)' : 'Bill Description (Arabic)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={pDescAr}
                     onChange={(e) => setPDescAr(e.target.value)}
                     placeholder="مثال: فاتورة استضافة الخوادم"

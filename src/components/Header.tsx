@@ -28,6 +28,7 @@ interface HeaderProps {
   invoices: Invoice[];
   adjustments: FinancialAdjustment[];
   systemSettings: SystemSettings;
+  onQuickAction: (action: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -44,10 +45,12 @@ export const Header: React.FC<HeaderProps> = ({
   expenses,
   invoices,
   adjustments,
-  systemSettings
+  systemSettings,
+  onQuickAction
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAlertsMenu, setShowAlertsMenu] = useState(false);
+  const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
@@ -322,6 +325,99 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Settings, Language Toggle and Profile widgets */}
       <div className="flex items-center space-x-4 space-x-reverse relative">
+        {/* Quick Action Button & Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowQuickActionsMenu(!showQuickActionsMenu)}
+            className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition duration-150 active:scale-95 cursor-pointer shadow-sm border-0"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />
+            <span>{language === 'ar' ? 'إجراء سريع' : 'Quick Action'}</span>
+            <ChevronDown className="w-3 h-3 text-emerald-100 shrink-0" />
+          </button>
+
+          {showQuickActionsMenu && (
+            <div className={`absolute ${language === 'ar' ? 'left-0' : 'right-0'} mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 z-30 font-sans text-xs text-start`}>
+              <div className="px-2.5 py-1.5 border-b border-slate-100 text-slate-400 font-bold text-[10px] uppercase">
+                {language === 'ar' ? 'العمليات السريعة' : 'Global Shortcuts'}
+              </div>
+              <div className="py-1 space-y-0.5">
+                {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Manager' || currentUser?.role === 'Accountant') && (
+                  <button
+                    onClick={() => {
+                      onQuickAction('CREATE_INVOICE');
+                      setShowQuickActionsMenu(false);
+                    }}
+                    className="w-full text-start px-2.5 py-2 hover:bg-slate-50 rounded-lg text-slate-700 hover:text-emerald-700 font-semibold cursor-pointer border-0 bg-transparent flex items-center gap-2"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>{language === 'ar' ? 'فاتورة جديدة' : 'New Invoice'}</span>
+                  </button>
+                )}
+                
+                {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Manager') && (
+                  <>
+                    <button
+                      onClick={() => {
+                        onQuickAction('RECORD_EXPENSE');
+                        setShowQuickActionsMenu(false);
+                      }}
+                      className="w-full text-start px-2.5 py-2 hover:bg-slate-50 rounded-lg text-slate-700 hover:text-emerald-700 font-semibold cursor-pointer border-0 bg-transparent flex items-center gap-2"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                      <span>{language === 'ar' ? 'تسجيل مصروف' : 'Record Expense'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onQuickAction('RECORD_INCOME');
+                        setShowQuickActionsMenu(false);
+                      }}
+                      className="w-full text-start px-2.5 py-2 hover:bg-slate-50 rounded-lg text-slate-700 hover:text-emerald-700 font-semibold cursor-pointer border-0 bg-transparent flex items-center gap-2"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      <span>{language === 'ar' ? 'تسجيل إيراد' : 'Record Income'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onQuickAction('RECORD_BILL');
+                        setShowQuickActionsMenu(false);
+                      }}
+                      className="w-full text-start px-2.5 py-2 hover:bg-slate-50 rounded-lg text-slate-700 hover:text-emerald-700 font-semibold cursor-pointer border-0 bg-transparent flex items-center gap-2"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span>{language === 'ar' ? 'تسجيل فاتورة مورد' : 'Record Vendor Bill'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onQuickAction('ADD_CUSTOMER');
+                        setShowQuickActionsMenu(false);
+                      }}
+                      className="w-full text-start px-2.5 py-2 hover:bg-slate-50 rounded-lg text-slate-700 hover:text-emerald-700 font-semibold cursor-pointer border-0 bg-transparent flex items-center gap-2"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                      <span>{language === 'ar' ? 'عميل جديد' : 'New Customer'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onQuickAction('ADD_VENDOR');
+                        setShowQuickActionsMenu(false);
+                      }}
+                      className="w-full text-start px-2.5 py-2 hover:bg-slate-50 rounded-lg text-slate-700 hover:text-emerald-700 font-semibold cursor-pointer border-0 bg-transparent flex items-center gap-2"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                      <span>{language === 'ar' ? 'مورد جديد' : 'New Vendor'}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Language Toggler */}
         <button
           onClick={toggleLanguage}

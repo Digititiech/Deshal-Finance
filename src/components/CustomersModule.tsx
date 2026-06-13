@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Customer, Invoice, UserRole } from '../types';
 import { 
   PlusCircle, 
@@ -22,6 +22,8 @@ interface CustomersModuleProps {
   deleteCustomer: (id: string) => void;
   lang: 'en' | 'ar';
   userRole?: UserRole;
+  quickActionTrigger?: string | null;
+  clearQuickAction?: () => void;
 }
 
 export const CustomersModule: React.FC<CustomersModuleProps> = ({
@@ -31,7 +33,9 @@ export const CustomersModule: React.FC<CustomersModuleProps> = ({
   editCustomer,
   deleteCustomer,
   lang,
-  userRole
+  userRole,
+  quickActionTrigger,
+  clearQuickAction
 }) => {
   const [search, setSearch] = useState('');
   
@@ -50,6 +54,21 @@ export const CustomersModule: React.FC<CustomersModuleProps> = ({
 
   // Client Details panel state
   const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
+
+  useEffect(() => {
+    if (quickActionTrigger === 'ADD_CUSTOMER') {
+      setEditingCustomer(null);
+      setName('');
+      setNameAr('');
+      setCode('');
+      setEmail('');
+      setPhone('');
+      setAddress('');
+      setAddressAr('');
+      setShowFormModal(true);
+      if (clearQuickAction) clearQuickAction();
+    }
+  }, [quickActionTrigger, clearQuickAction]);
 
   // Helper selectors
   const getCustomerStats = (cusId: string) => {
@@ -389,20 +408,20 @@ export const CustomersModule: React.FC<CustomersModuleProps> = ({
               <div className="grid grid-cols-1 gap-2">
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'العنوان الجغرافي (ENG)' : 'Registered Address (English)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-100 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm"
+                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm"
                   />
                 </div>
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'العنوان الجغرافي (AR)' : 'Registered Address (Arabic)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={addressAr}
                     onChange={(e) => setAddressAr(e.target.value)}
-                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-100 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm"
+                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm"
                   />
                 </div>
               </div>

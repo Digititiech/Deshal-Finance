@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Expense, ExpenseCategory, ExpenseStatus, Branch, UserRole, Customer, SystemSettings } from '../types';
 import { 
   Download, 
@@ -27,6 +27,8 @@ interface ExpensesModuleProps {
   lang: 'en' | 'ar';
   userRole?: UserRole;
   systemSettings: SystemSettings;
+  quickActionTrigger?: string | null;
+  clearQuickAction?: () => void;
 }
 
 export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
@@ -39,7 +41,9 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   deleteExpense,
   lang,
   userRole,
-  systemSettings
+  systemSettings,
+  quickActionTrigger,
+  clearQuickAction
 }) => {
   const [viewingPaymentVoucher, setViewingPaymentVoucher] = useState<Expense | null>(null);
   const [search, setSearch] = useState('');
@@ -69,6 +73,13 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   // Base64 upload file storage
   const [fileName, setFileName] = useState('');
   const [attachmentData, setAttachmentData] = useState('');
+
+  useEffect(() => {
+    if (quickActionTrigger === 'RECORD_EXPENSE') {
+      setShowAddModal(true);
+      if (clearQuickAction) clearQuickAction();
+    }
+  }, [quickActionTrigger, clearQuickAction]);
 
   // View Receipt Modal State
   const [activeReceipt, setActiveReceipt] = useState<Expense | null>(null);

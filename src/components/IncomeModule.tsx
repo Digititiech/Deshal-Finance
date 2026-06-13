@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Income, PaymentMethod, Branch, UserRole, Customer, SystemSettings } from '../types';
 import { 
   Download, 
@@ -23,6 +23,8 @@ interface IncomeModuleProps {
   lang: 'en' | 'ar';
   userRole?: UserRole;
   systemSettings: SystemSettings;
+  quickActionTrigger?: string | null;
+  clearQuickAction?: () => void;
 }
 
 export const IncomeModule: React.FC<IncomeModuleProps> = ({
@@ -35,7 +37,9 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
   deleteIncome,
   lang,
   userRole,
-  systemSettings
+  systemSettings,
+  quickActionTrigger,
+  clearQuickAction
 }) => {
   const [viewingVoucher, setViewingVoucher] = useState<Income | null>(null);
   const [search, setSearch] = useState('');
@@ -60,6 +64,13 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
   const [newMethod, setNewMethod] = useState<PaymentMethod>('Bank Transfer');
   const [newDesc, setNewDesc] = useState('');
   const [newDescAr, setNewDescAr] = useState('');
+
+  useEffect(() => {
+    if (quickActionTrigger === 'RECORD_INCOME') {
+      setShowAddModal(true);
+      if (clearQuickAction) clearQuickAction();
+    }
+  }, [quickActionTrigger, clearQuickAction]);
 
   // Handle adding new income record
   const handleSubmit = (e: React.FormEvent) => {

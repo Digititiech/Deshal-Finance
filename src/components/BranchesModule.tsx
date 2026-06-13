@@ -243,8 +243,8 @@ export const BranchesModule: React.FC<BranchesModuleProps> = ({
               {/* Location English */}
               <div>
                 <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'مقر أو عنوان الفرع (ENG)' : 'Registered Address (English)'}</label>
-                <input
-                  type="text"
+                <textarea
+                  rows={3}
                   required
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
@@ -255,9 +255,9 @@ export const BranchesModule: React.FC<BranchesModuleProps> = ({
 
               {/* Location Arabic */}
               <div>
-                <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'مقر أو عنوان الفرع (AR)' : 'Registered Address (Arabic)'}</label>
-                <input
-                  type="text"
+                <label className="text-slate-505 block mb-1 font-bold">{lang === 'ar' ? 'مقر أو عنوان الفرع (AR)' : 'Registered Address (Arabic)'}</label>
+                <textarea
+                  rows={3}
                   value={locationAr}
                   onChange={(e) => setLocationAr(e.target.value)}
                   placeholder="مثال: الرياض أوليا بلازا"

@@ -21,6 +21,8 @@ export default function App() {
   const db = useDb();
   const [activeTab, setActiveTab] = useState<TabId>('DASHBOARD');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [quickActionTrigger, setQuickActionTrigger] = useState<string | null>(null);
+  const clearQuickAction = () => setQuickActionTrigger(null);
 
   // If user is not authorized, trigger login portal
   if (!db.currentUser) {
@@ -60,6 +62,8 @@ export default function App() {
             lang={db.language}
             userRole={db.currentUser?.role}
             systemSettings={db.systemSettings}
+            quickActionTrigger={quickActionTrigger}
+            clearQuickAction={clearQuickAction}
           />
         );
       case 'EXPENSES':
@@ -75,6 +79,8 @@ export default function App() {
             lang={db.language}
             userRole={db.currentUser?.role}
             systemSettings={db.systemSettings}
+            quickActionTrigger={quickActionTrigger}
+            clearQuickAction={clearQuickAction}
           />
         );
       case 'INVOICES':
@@ -90,6 +96,8 @@ export default function App() {
             lang={db.language}
             userRole={db.currentUser?.role}
             systemSettings={db.systemSettings}
+            quickActionTrigger={quickActionTrigger}
+            clearQuickAction={clearQuickAction}
           />
         );
       case 'RECEIPTS':
@@ -124,6 +132,8 @@ export default function App() {
             lang={db.language}
             userRole={db.currentUser?.role}
             systemSettings={db.systemSettings}
+            quickActionTrigger={quickActionTrigger}
+            clearQuickAction={clearQuickAction}
           />
         );
       case 'ADJUSTMENTS':
@@ -168,6 +178,8 @@ export default function App() {
             deleteCustomer={db.deleteCustomer}
             lang={db.language}
             userRole={db.currentUser?.role}
+            quickActionTrigger={quickActionTrigger}
+            clearQuickAction={clearQuickAction}
           />
         );
       case 'BRANCHES':
@@ -280,6 +292,27 @@ export default function App() {
           invoices={db.invoices}
           adjustments={db.adjustments}
           systemSettings={db.systemSettings}
+          onQuickAction={(action) => {
+            setQuickActionTrigger(action);
+            switch (action) {
+              case 'CREATE_INVOICE':
+                setActiveTab('INVOICES');
+                break;
+              case 'RECORD_EXPENSE':
+                setActiveTab('EXPENSES');
+                break;
+              case 'RECORD_INCOME':
+                setActiveTab('INCOME');
+                break;
+              case 'RECORD_BILL':
+              case 'ADD_VENDOR':
+                setActiveTab('PAYABLES');
+                break;
+              case 'ADD_CUSTOMER':
+                setActiveTab('CUSTOMERS');
+                break;
+            }
+          }}
         />
 
         {/* Dynamic Inner Sub-Modules view container */}

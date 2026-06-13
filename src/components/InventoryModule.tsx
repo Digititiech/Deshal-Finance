@@ -954,8 +954,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-500 font-bold block mb-1">{lang === 'ar' ? 'ملاحظات (English)' : 'Logistics notes (English)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={movementNotes}
                     onChange={(e) => setMovementNotes(e.target.value)}
                     placeholder="Wasted/damaged replacement..."
@@ -964,8 +964,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 </div>
                 <div>
                   <label className="text-slate-500 font-bold block mb-1">{lang === 'ar' ? 'ملاحظات (العربية)' : 'Logistics notes (Arabic)'}</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={movementNotesAr}
                     onChange={(e) => setMovementNotesAr(e.target.value)}
                     placeholder="مثال: تلف، شراء شحنة إضافية..."

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem, Customer, Branch, InvoiceStatus, UserRole, SystemSettings } from '../types';
 import { 
   PlusCircle, 
@@ -28,6 +28,8 @@ interface InvoicesModuleProps {
   lang: 'en' | 'ar';
   userRole?: UserRole;
   systemSettings: SystemSettings;
+  quickActionTrigger?: string | null;
+  clearQuickAction?: () => void;
 }
 
 export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
@@ -40,7 +42,9 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
   recordReceipt,
   lang,
   userRole,
-  systemSettings
+  systemSettings,
+  quickActionTrigger,
+  clearQuickAction
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -75,6 +79,13 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
   const [collectAmount, setCollectAmount] = useState('');
   const [collectMethod, setCollectMethod] = useState('Bank Transfer');
   const [collectNotes, setCollectNotes] = useState('');
+
+  useEffect(() => {
+    if (quickActionTrigger === 'CREATE_INVOICE') {
+      setShowCreateModal(true);
+      if (clearQuickAction) clearQuickAction();
+    }
+  }, [quickActionTrigger, clearQuickAction]);
 
   // Currency utility based on dynamic primaryCurrency settings
   const getCurrencySymbol = () => {
@@ -751,6 +762,17 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
                             <option value="Cash">Cash</option>
                             <option value="Corporate Credit">Corporate Credit</option>
                           </select>
+                        </div>
+
+                        <div className="space-y-1 animate-none">
+                          <label className="text-slate-400 block font-semibold">{lang === 'ar' ? 'ملاحظات' : 'Notes'}</label>
+                          <textarea
+                            value={collectNotes}
+                            onChange={(e) => setCollectNotes(e.target.value)}
+                            placeholder={lang === 'ar' ? 'ملاحظات الدفعة المستلمة...' : 'Receipt notes...'}
+                            rows={2}
+                            className="w-full bg-slate-55 border border-slate-205 text-slate-800 p-1.5 rounded-md text-xxs bg-white animate-none outline-none focus:border-emerald-500"
+                          />
                         </div>
 
                         <div className="flex gap-1 justify-end pt-1 animate-none">
