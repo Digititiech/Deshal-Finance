@@ -1,0 +1,6 @@
+{
+  "name": "Financial Management System",
+  "description": "Production-ready Financial Management System including dynamic ledger flow tracking, invoicing, automated receipts collection, regional branch isolation, and CRM profiles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

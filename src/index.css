@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;405;500;605;700&family=Space+Grotesk:wght@505;600;700&family=Cairo:wght@305;405;505;605;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Cairo", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-display: "Space Grotesk", "Cairo", sans-serif;
+}
+
+body {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+/* Custom scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.8);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.4);
+}
+
+/* Base utility text alignment for clean Arabic support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="ltr"] {
+  text-align: left;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Print layout rules to isolate only the target invoice/receipt document */
+@media print {
+  /* Hide standard non-print UI layout elements */
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  input[type="range"],
+  .no-print,
+  .lg\:col-span-4,
+  .close-btn {
+    display: none !important;
+  }
+
+  /* Hide absolutely everything in the body that is not the printable area, a parent of the printable area, or a child of the printable area.
+     This ensures that hidden elements occupy zero space in the page flow, eliminating large blank pages. */
+  *:not(:has(.printable-area)):not(.printable-area):not(.printable-area *) {
+    display: none !important;
+  }
+
+  /* Explicitly make the printable document page and its descendants visible */
+  .printable-area,
+  .printable-area * {
+    visibility: visible !important;
+  }
+
+  /* Format html and body for printing */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Override fixed containers, modals, overlays, and scrolls outside the printable area so they do not clip or hide printables.
+     Exclude elements inside .printable-area to preserve their internal layouts, backgrounds, borders, and padding. */
+  #root,
+  main,
+  div:not(.printable-area *),
+  section:not(.printable-area *),
+  article:not(.printable-area *) {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    scale: none !important;
+    background: transparent !important;
+  }
+
+  /* Make sure our printable area takes full page gracefully and supports multi-page flow without absolute clipping */
+  .printable-area {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Custom layout tuning for print margin specifications */
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+
+  /* Forces modern browsers to print colored elements, borders, and backgrounds correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
