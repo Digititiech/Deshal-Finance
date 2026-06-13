@@ -499,6 +499,7 @@ export const useDb = () => {
             branchId: e.branch_id || '',
             branchIds: e.branch_ids || (e.branch_id ? [e.branch_id] : []),
             email: e.email || '',
+            phone: e.phone || '',
             avatar: e.avatar || '',
             status: e.status as any,
             salary: Number(e.salary) || 0
@@ -1024,7 +1025,8 @@ export const useDb = () => {
       p_role: item.role,
       p_name: item.name,
       p_name_ar: item.nameAr,
-      p_branch_ids: branchIdsVal
+      p_branch_ids: branchIdsVal,
+      p_phone: item.phone || ''
     });
 
     if (error) {
@@ -1056,6 +1058,7 @@ export const useDb = () => {
       branch_id: branchVal,
       branch_ids: branchIdsVal,
       email: item.email,
+      phone: item.phone || '',
       avatar: item.avatar,
       status: item.status,
       salary: item.salary

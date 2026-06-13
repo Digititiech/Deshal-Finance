@@ -8,6 +8,7 @@ import {
   Trash2, 
   X, 
   Mail, 
+  Phone,
   Briefcase, 
   Building,
   ShieldAlert 
@@ -50,6 +51,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [branchId, setBranchId] = useState('');
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [salary, setSalary] = useState('');
   const [status, setStatus] = useState<EmployeeStatus>('Active');
   const [password, setPassword] = useState('');
@@ -72,6 +74,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setBranchId(branches[0]?.id || '');
     setSelectedBranchIds(branches[0]?.id ? [branches[0].id] : []);
     setEmail('');
+    setPhone('');
     setSalary('');
     setStatus('Active');
     setPassword('');
@@ -90,6 +93,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setBranchId(e.branchId);
     setSelectedBranchIds(e.branchIds || (e.branchId ? [e.branchId] : []));
     setEmail(e.email);
+    setPhone(e.phone || '');
     setSalary(e.salary.toString());
     setStatus(e.status);
     setPassword('');
@@ -120,6 +124,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       branchId: selectedBranchIds[0] || '',
       branchIds: selectedBranchIds,
       email,
+      phone,
       avatar: editingEmployee ? editingEmployee.avatar : 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
       status,
       salary: parseFloat(salary) || 3000,
@@ -277,6 +282,12 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   <span className="text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" /> {lang === 'ar' ? 'البريد الإلكتروني:' : 'E-Mail address:'}</span>
                   <span className="text-slate-700 select-all font-mono truncate max-w-[150px]">{emp.email}</span>
                 </div>
+                {emp.phone && (
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 items-center">
+                    <span className="text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3" /> {lang === 'ar' ? 'رقم الهاتف:' : 'Phone number:'}</span>
+                    <span className="text-slate-700 select-all font-mono truncate max-w-[150px]">{emp.phone}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-b border-slate-100 pb-1.5 items-center">
                   <span className="text-slate-400 flex items-center gap-1"><Briefcase className="w-3 h-3" /> {lang === 'ar' ? 'المسمى الوظيفي:' : 'Role Title:'}</span>
                   <span className="text-slate-800 font-bold leading-none">{lang === 'ar' ? emp.roleTitleAr : emp.roleTitle}</span>
@@ -372,17 +383,31 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 </div>
               </div>
 
-              {/* Email */}
-              <div>
-                <label className="text-slate-550 text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'البريد الإلكتروني المعتمر' : 'Work Email address'}</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. richard@fintechos.com"
-                  className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none font-mono shadow-sm"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                {/* Email */}
+                <div>
+                  <label className="text-slate-550 text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'البريد الإلكتروني المعتمر' : 'Work Email address'}</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. richard@fintechos.com"
+                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none font-mono shadow-sm"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'رقم الهاتف' : 'Phone Number'}</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +966500000000"
+                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none font-mono shadow-sm"
+                  />
+                </div>
               </div>
 
               {/* Password (for new onboarding) */}

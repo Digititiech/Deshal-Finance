@@ -114,6 +114,7 @@ export interface Employee {
   branchId: string;
   branchIds?: string[];
   email: string;
+  phone?: string;
   avatar: string;
   status: EmployeeStatus;
   salary: number;
