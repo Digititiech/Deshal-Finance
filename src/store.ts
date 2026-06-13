@@ -752,6 +752,11 @@ export const useDb = () => {
     return data;
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+  };
+
   // Auth operations
   const loginSim = (role: UserRole, branchId: string) => {
     const roles: Record<UserRole, {name: string, nameAr: string}> = {
@@ -1411,6 +1416,7 @@ export const useDb = () => {
     logoutSim,
     signUp,
     signIn,
+    resetPassword,
     addIncome,
     deleteIncome,
     addExpense,
