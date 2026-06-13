@@ -15,6 +15,7 @@ import { SettingsModule } from './components/SettingsModule';
 import { AuthSim } from './components/AuthSim';
 import { AdjustmentsModule } from './components/AdjustmentsModule';
 import { InventoryModule } from './components/InventoryModule';
+import { PayablesModule } from './components/PayablesModule';
 
 export default function App() {
   const db = useDb();
@@ -99,6 +100,27 @@ export default function App() {
             invoices={db.invoices}
             branches={db.branches}
             deleteReceipt={db.deleteReceipt}
+            lang={db.language}
+            userRole={db.currentUser?.role}
+            systemSettings={db.systemSettings}
+          />
+        );
+      case 'PAYABLES':
+        return (
+          <PayablesModule
+            vendors={db.vendors}
+            payables={db.payables}
+            filteredPayables={db.filteredPayables}
+            payablePayments={db.payablePayments}
+            filteredPayablePayments={db.filteredPayablePayments}
+            branches={db.branches}
+            addVendor={db.addVendor}
+            editVendor={db.editVendor}
+            deleteVendor={db.deleteVendor}
+            addPayable={db.addPayable}
+            deletePayable={db.deletePayable}
+            recordPayablePayment={db.recordPayablePayment}
+            deletePayablePayment={db.deletePayablePayment}
             lang={db.language}
             userRole={db.currentUser?.role}
             systemSettings={db.systemSettings}

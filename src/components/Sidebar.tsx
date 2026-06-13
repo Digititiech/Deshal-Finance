@@ -14,10 +14,11 @@ import {
   ShieldCheck, 
   LogOut,
   Scale,
-  Package
+  Package,
+  Coins
 } from 'lucide-react';
 
-export type TabId = 'DASHBOARD' | 'INCOME' | 'EXPENSES' | 'INVOICES' | 'RECEIPTS' | 'ADJUSTMENTS' | 'INVENTORY' | 'CUSTOMERS' | 'BRANCHES' | 'EMPLOYEES' | 'REPORTS' | 'SETTINGS';
+export type TabId = 'DASHBOARD' | 'INCOME' | 'EXPENSES' | 'INVOICES' | 'RECEIPTS' | 'PAYABLES' | 'ADJUSTMENTS' | 'INVENTORY' | 'CUSTOMERS' | 'BRANCHES' | 'EMPLOYEES' | 'REPORTS' | 'SETTINGS';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang,
     { id: 'EXPENSES', label: 'Expenses', labelAr: 'المصروفات', icon: TrendingDown },
     { id: 'INVOICES', label: 'Invoices', labelAr: 'الفواتير', icon: ReceiptText },
     { id: 'RECEIPTS', label: 'Receipts', labelAr: 'سندات القبض', icon: CreditCard },
+    { id: 'PAYABLES', label: 'Accounts Payable', labelAr: 'الحسابات الدائنة', icon: Coins },
     { id: 'ADJUSTMENTS', label: 'Adjustments (CN/DN)', labelAr: 'التسويات والخصومات', icon: Scale },
     { id: 'INVENTORY', label: 'Products & Stock', labelAr: 'المنتجات والمخزون', icon: Package },
     { id: 'CUSTOMERS', label: 'Customers', labelAr: 'العملاء', icon: Users },

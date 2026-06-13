@@ -215,3 +215,39 @@ export interface FinancialAdjustment {
   createdBy: string;
 }
 
+export interface Vendor {
+  id: string;
+  name: string;
+  nameAr: string;
+  code: string;
+  contactEmail: string;
+  phone: string;
+  address: string;
+  addressAr: string;
+}
+
+export interface Payable {
+  id: string;
+  payableNumber: string;
+  vendorId: string;
+  branchId: string;
+  issueDate: string;
+  dueDate: string;
+  totalAmount: number;
+  paidAmount: number;
+  status: InvoiceStatus;
+  description?: string;
+  descriptionAr?: string;
+}
+
+export interface PayablePayment {
+  id: string;
+  paymentNumber: string;
+  payableId: string;
+  amount: number;
+  date: string;
+  paymentMethod: string;
+  branchId: string;
+  notes?: string;
+}
+

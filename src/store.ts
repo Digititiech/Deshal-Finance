@@ -17,7 +17,10 @@ import {
   EmployeeStatus,
   ProductItem,
   InventoryMovement,
-  FinancialAdjustment
+  FinancialAdjustment,
+  Vendor,
+  Payable,
+  PayablePayment
 } from './types';
 
 // Storage keys
@@ -35,6 +38,24 @@ const KEY_LANG = 'fms_language';
 const KEY_PRODUCTS = 'fms_products';
 const KEY_MOVEMENTS = 'fms_movements';
 const KEY_ADJUSTMENTS = 'fms_adjustments';
+const KEY_VENDORS = 'fms_vendors';
+const KEY_PAYABLES = 'fms_payables';
+const KEY_PAYABLE_PAYMENTS = 'fms_payable_payments';
+
+const INITIAL_VENDORS: Vendor[] = [
+  { id: 'ven_001', name: 'Global Tech Distributors', nameAr: 'موزعو التكنولوجيا العالمية', code: 'GTD', contactEmail: 'orders@globaltech.com', phone: '+1-555-8930', address: '400 Enterprise Way, NY', addressAr: '٤٠٠ طريق الأعمال، نيويورك' },
+  { id: 'ven_002', name: 'Middle East Logistics', nameAr: 'الشرق الأوسط للخدمات اللوجستية', code: 'MEL', contactEmail: 'shipping@melogistics.ae', phone: '+971-4-9988', address: 'Dubai Port Area, Dubai', addressAr: 'منطقة ميناء دبي، دبي' }
+];
+
+const INITIAL_PAYABLES: Payable[] = [
+  { id: 'pay_001', payableNumber: 'PAY-2026-001', vendorId: 'ven_001', branchId: 'riyadh_hq', issueDate: '2026-06-01', dueDate: '2026-07-01', totalAmount: 15000, paidAmount: 5000, status: 'Partial', description: 'Bulk hardware procurement', descriptionAr: 'شراء أجهزة ومعدات بالجملة' },
+  { id: 'pay_002', payableNumber: 'PAY-2026-002', vendorId: 'ven_002', branchId: 'dubai_marina', issueDate: '2026-06-05', dueDate: '2026-06-25', totalAmount: 8500, paidAmount: 8500, status: 'Paid', description: 'Office supply transport shipping', descriptionAr: 'شحن وتوصيل مستلزمات مكتبية' }
+];
+
+const INITIAL_PAYABLE_PAYMENTS: PayablePayment[] = [
+  { id: 'pay_rec_001', paymentNumber: 'PAY-REC-001', payableId: 'pay_001', amount: 5000, date: '2026-06-02', paymentMethod: 'Bank Transfer', branchId: 'riyadh_hq', notes: 'First advance partial payment' },
+  { id: 'pay_rec_002', paymentNumber: 'PAY-REC-002', payableId: 'pay_002', amount: 8500, date: '2026-06-06', paymentMethod: 'Corporate Credit', branchId: 'dubai_marina', notes: 'Final payoff for shipping invoice' }
+];
 
 // Initial preseeded data matching screenshots
 const INITIAL_BRANCHES: Branch[] = [
@@ -356,6 +377,9 @@ export const useDb = () => {
   const [products, setProducts] = useState<ProductItem[]>(() => getStored(KEY_PRODUCTS, INITIAL_PRODUCTS));
   const [movements, setMovements] = useState<InventoryMovement[]>(() => getStored(KEY_MOVEMENTS, INITIAL_MOVEMENTS));
   const [adjustments, setAdjustments] = useState<FinancialAdjustment[]>(() => getStored(KEY_ADJUSTMENTS, INITIAL_ADJUSTMENTS));
+  const [vendors, setVendors] = useState<Vendor[]>(() => getStored(KEY_VENDORS, INITIAL_VENDORS));
+  const [payables, setPayables] = useState<Payable[]>(() => getStored(KEY_PAYABLES, INITIAL_PAYABLES));
+  const [payablePayments, setPayablePayments] = useState<PayablePayment[]>(() => getStored(KEY_PAYABLE_PAYMENTS, INITIAL_PAYABLE_PAYMENTS));
   const [systemSettings, setSystemSettings] = useState<SystemSettings>(() => {
     const stored = getStored(KEY_SETTINGS, INITIAL_SETTINGS);
     return { ...INITIAL_SETTINGS, ...stored };
@@ -380,6 +404,9 @@ export const useDb = () => {
     setProducts(INITIAL_PRODUCTS);
     setMovements(INITIAL_MOVEMENTS);
     setAdjustments(INITIAL_ADJUSTMENTS);
+    setVendors(INITIAL_VENDORS);
+    setPayables(INITIAL_PAYABLES);
+    setPayablePayments(INITIAL_PAYABLE_PAYMENTS);
     setSystemSettings(INITIAL_SETTINGS);
   };
 
@@ -678,6 +705,54 @@ export const useDb = () => {
             twoFactorAuth: sett.two_factor_auth
           });
         }
+
+        // Load vendors
+        const { data: vends } = await supabase.from('vendors').select('*');
+        if (vends) {
+          setVendors(vends.map(v => ({
+            id: v.id,
+            name: v.name,
+            nameAr: v.name_ar,
+            code: v.code || '',
+            contactEmail: v.contact_email || '',
+            phone: v.phone || '',
+            address: v.address || '',
+            addressAr: v.address_ar || ''
+          })));
+        }
+
+        // Load payables
+        const { data: pays } = await supabase.from('payables').select('*');
+        if (pays) {
+          setPayables(pays.map(p => ({
+            id: p.id,
+            payableNumber: p.payable_number,
+            vendorId: p.vendor_id || '',
+            branchId: p.branch_id || '',
+            issueDate: p.issue_date,
+            dueDate: p.due_date,
+            totalAmount: Number(p.total_amount),
+            paidAmount: Number(p.paid_amount),
+            status: p.status as any,
+            description: p.description || undefined,
+            descriptionAr: p.description_ar || undefined
+          })));
+        }
+
+        // Load payable payments
+        const { data: payReceipts } = await supabase.from('payable_payments').select('*');
+        if (payReceipts) {
+          setPayablePayments(payReceipts.map(pr => ({
+            id: pr.id,
+            paymentNumber: pr.payment_number,
+            payableId: pr.payable_id || '',
+            amount: Number(pr.amount),
+            date: pr.date,
+            paymentMethod: pr.payment_method || '',
+            branchId: pr.branch_id || '',
+            notes: pr.notes || undefined
+          })));
+        }
       } catch (err) {
         console.error("Error loading data from Supabase:", err);
       }
@@ -706,6 +781,9 @@ export const useDb = () => {
   useEffect(() => { saveStored(KEY_PRODUCTS, products); }, [products]);
   useEffect(() => { saveStored(KEY_MOVEMENTS, movements); }, [movements]);
   useEffect(() => { saveStored(KEY_ADJUSTMENTS, adjustments); }, [adjustments]);
+  useEffect(() => { saveStored(KEY_VENDORS, vendors); }, [vendors]);
+  useEffect(() => { saveStored(KEY_PAYABLES, payables); }, [payables]);
+  useEffect(() => { saveStored(KEY_PAYABLE_PAYMENTS, payablePayments); }, [payablePayments]);
   useEffect(() => { saveStored(KEY_SETTINGS, systemSettings); }, [systemSettings]);
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1119,6 +1197,141 @@ export const useDb = () => {
     await supabase.from('customers').delete().eq('id', id);
   };
 
+  const addVendor = async (item: Omit<Vendor, 'id'>) => {
+    const id = `ven_${Date.now()}`;
+    const newV: Vendor = { ...item, id };
+    setVendors(prev => [...prev, newV]);
+
+    await supabase.from('vendors').insert({
+      id,
+      name: item.name,
+      name_ar: item.nameAr,
+      code: item.code,
+      contact_email: item.contactEmail,
+      phone: item.phone,
+      address: item.address,
+      address_ar: item.addressAr
+    });
+
+    return newV;
+  };
+
+  const editVendor = async (item: Vendor) => {
+    setVendors(prev => prev.map(v => v.id === item.id ? item : v));
+
+    await supabase.from('vendors').update({
+      name: item.name,
+      name_ar: item.nameAr,
+      code: item.code,
+      contact_email: item.contactEmail,
+      phone: item.phone,
+      address: item.address,
+      address_ar: item.addressAr
+    }).eq('id', item.id);
+  };
+
+  const deleteVendor = async (id: string) => {
+    setVendors(prev => prev.filter(v => v.id !== id));
+    await supabase.from('vendors').delete().eq('id', id);
+  };
+
+  const addPayable = async (item: Omit<Payable, 'id' | 'paidAmount' | 'status'>) => {
+    const id = `pay_${Date.now()}`;
+    const newP: Payable = {
+      ...item,
+      id,
+      paidAmount: 0,
+      status: 'Unpaid'
+    };
+    setPayables(prev => [...prev, newP]);
+
+    await supabase.from('payables').insert({
+      id,
+      payable_number: item.payableNumber,
+      vendor_id: item.vendorId,
+      branch_id: item.branchId,
+      issue_date: item.issueDate,
+      due_date: item.dueDate,
+      total_amount: item.totalAmount,
+      paid_amount: 0,
+      status: 'Unpaid',
+      description: item.description,
+      description_ar: item.descriptionAr
+    });
+
+    return newP;
+  };
+
+  const deletePayable = async (id: string) => {
+    setPayables(prev => prev.filter(p => p.id !== id));
+    await supabase.from('payables').delete().eq('id', id);
+  };
+
+  const recordPayablePayment = async (item: Omit<PayablePayment, 'id'>) => {
+    const id = `pay_rec_${Date.now()}`;
+    const newPM: PayablePayment = { ...item, id };
+    
+    // Calculate new paid amount and status
+    const payableObj = payables.find(p => p.id === item.payableId);
+    if (payableObj) {
+      const newPaid = Number(payableObj.paidAmount) + Number(item.amount);
+      const newStatus: InvoiceStatus = newPaid >= Number(payableObj.totalAmount) 
+        ? 'Paid' 
+        : (newPaid > 0 ? 'Partial' : 'Unpaid');
+
+      setPayables(prev => prev.map(p => p.id === item.payableId 
+        ? { ...p, paidAmount: newPaid, status: newStatus } 
+        : p
+      ));
+
+      await supabase.from('payables').update({
+        paid_amount: newPaid,
+        status: newStatus
+      }).eq('id', item.payableId);
+    }
+
+    setPayablePayments(prev => [...prev, newPM]);
+
+    await supabase.from('payable_payments').insert({
+      id,
+      payment_number: item.paymentNumber,
+      payable_id: item.payableId,
+      amount: item.amount,
+      date: item.date,
+      payment_method: item.paymentMethod,
+      branch_id: item.branchId,
+      notes: item.notes
+    });
+
+    return newPM;
+  };
+
+  const deletePayablePayment = async (id: string) => {
+    const payment = payablePayments.find(p => p.id === id);
+    if (payment) {
+      const payableObj = payables.find(p => p.id === payment.payableId);
+      if (payableObj) {
+        const newPaid = Math.max(0, Number(payableObj.paidAmount) - Number(payment.amount));
+        const newStatus: InvoiceStatus = newPaid >= Number(payableObj.totalAmount) 
+          ? 'Paid' 
+          : (newPaid > 0 ? 'Partial' : 'Unpaid');
+
+        setPayables(prev => prev.map(p => p.id === payment.payableId 
+          ? { ...p, paidAmount: newPaid, status: newStatus } 
+          : p
+        ));
+
+        await supabase.from('payables').update({
+          paid_amount: newPaid,
+          status: newStatus
+        }).eq('id', payment.payableId);
+      }
+    }
+
+    setPayablePayments(prev => prev.filter(p => p.id !== id));
+    await supabase.from('payable_payments').delete().eq('id', id);
+  };
+
   const addProduct = async (item: Omit<ProductItem, 'id'>) => {
     const id = `prod_${Date.now()}`;
     const newP: ProductItem = { ...item, id };
@@ -1342,6 +1555,8 @@ export const useDb = () => {
   const filterReceiptByBranch = (items: Receipt[]): Receipt[] => filterByBranch(items);
   const filterAdjustmentByBranch = (items: FinancialAdjustment[]): FinancialAdjustment[] => filterByBranch(items);
   const filterMovementByBranch = (items: InventoryMovement[]): InventoryMovement[] => filterByBranch(items);
+  const filterPayableByBranch = (items: Payable[]): Payable[] => filterByBranch(items);
+  const filterPayablePaymentByBranch = (items: PayablePayment[]): PayablePayment[] => filterByBranch(items);
 
   const filteredIncome = filterIncomeByBranch(income);
   const filteredExpenses = filterExpenseByBranch(expenses);
@@ -1349,6 +1564,8 @@ export const useDb = () => {
   const filteredReceipts = filterReceiptByBranch(receipts);
   const filteredAdjustments = filterAdjustmentByBranch(adjustments);
   const filteredMovements = filterMovementByBranch(movements);
+  const filteredPayables = filterPayableByBranch(payables);
+  const filteredPayablePayments = filterPayablePaymentByBranch(payablePayments);
 
   const filteredEmployees = (() => {
     if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant') {
@@ -1486,6 +1703,18 @@ export const useDb = () => {
     addMovement,
     addAdjustment,
     editAdjustmentStatus,
+    vendors,
+    payables,
+    filteredPayables,
+    payablePayments,
+    filteredPayablePayments,
+    addVendor,
+    editVendor,
+    deleteVendor,
+    addPayable,
+    deletePayable,
+    recordPayablePayment,
+    deletePayablePayment,
     totalIncome: totalIncomeVal,
     totalExpenses: totalExpensesVal,
     netProfit: netProfitVal,
