@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from './supabase';
 import { 
   Branch, 
   User, 
@@ -359,13 +360,327 @@ export const useDb = () => {
     const stored = getStored(KEY_SETTINGS, INITIAL_SETTINGS);
     return { ...INITIAL_SETTINGS, ...stored };
   });
-  const [currentUser, setCurrentUser] = useState<User | null>(() => getStored(KEY_CURRENT_USER, INITIAL_USER));
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [language, setLanguage] = useState<'en' | 'ar'>(() => {
     if (typeof window === 'undefined') return 'ar';
-    return (localStorage.getItem(KEY_LANG) as 'en' | 'ar') || 'ar'; // Default to Arabic as requested first in screenshot direction
+    return (localStorage.getItem(KEY_LANG) as 'en' | 'ar') || 'ar';
   });
   
   const [currentBranchId, setCurrentBranchId] = useState<string>('all');
+
+  // Helper to reset data to pristine presets on logout
+  const resetDataToInitial = () => {
+    setBranches(INITIAL_BRANCHES);
+    setCustomers(INITIAL_CUSTOMERS);
+    setEmployees(INITIAL_EMPLOYEES);
+    setIncome(INITIAL_INCOME);
+    setExpenses(INITIAL_EXPENSES);
+    setInvoices(INITIAL_INVOICES);
+    setReceipts(INITIAL_RECEIPTS);
+    setProducts(INITIAL_PRODUCTS);
+    setMovements(INITIAL_MOVEMENTS);
+    setAdjustments(INITIAL_ADJUSTMENTS);
+    setSystemSettings(INITIAL_SETTINGS);
+  };
+
+  // 1. Supabase Auth listener integration
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        handleAuthUser(session.user);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        handleAuthUser(session.user);
+      } else {
+        setCurrentUser(null);
+        resetDataToInitial();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleAuthUser = async (authUser: any) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+      
+      if (profile) {
+        let branchVal = profile.branch_id;
+        if ((profile.role === 'Super Admin' || profile.role === 'Admin') && !branchVal) {
+          branchVal = 'all';
+        } else if (!branchVal) {
+          branchVal = 'riyadh_hq';
+        }
+        
+        const localUser: User = {
+          uid: authUser.id,
+          name: profile.name || authUser.user_metadata.name || 'New User',
+          nameAr: profile.name_ar || authUser.user_metadata.nameAr || 'مستخدم جديد',
+          email: authUser.email || '',
+          role: (profile.role || 'Employee') as UserRole,
+          branchId: branchVal,
+          avatar: profile.avatar || authUser.user_metadata.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_Um1BQxQ3_e2vnP_u0Xlw7mHhhkfLJZRCpPhytJ_0ycQyg55hfd8TgzK1ADVO3fg31i8ys_3WBw1d3rvARWnsawf7ftGgqZrH4jwhCL9xlnPRcvNzykhrCuLlK5A_xSnjNMZZugqcXd8ho0F_WQ4-RZAX4thXvUZaL9dNudjK-C18Dxe1PD60-cV6P_fcBd4ctqRCIuU6CSBsT4UYQIrkixwbHjbl-AVoQAK3NAVERIvVlPqURqNc9Zhf1v4ZjE6F_64iAfuDaLU'
+        };
+        setCurrentUser(localUser);
+      } else {
+        const localUser: User = {
+          uid: authUser.id,
+          name: authUser.user_metadata.name || 'New User',
+          nameAr: authUser.user_metadata.nameAr || 'مستخدم جديد',
+          email: authUser.email || '',
+          role: (authUser.user_metadata.role || 'Employee') as UserRole,
+          branchId: authUser.user_metadata.branchId || 'riyadh_hq',
+          avatar: authUser.user_metadata.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_Um1BQxQ3_e2vnP_u0Xlw7mHhhkfLJZRCpPhytJ_0ycQyg55hfd8TgzK1ADVO3fg31i8ys_3WBw1d3rvARWnsawf7ftGgqZrH4jwhCL9xlnPRcvNzykhrCuLlK5A_xSnjNMZZugqcXd8ho0F_WQ4-RZAX4thXvUZaL9dNudjK-C18Dxe1PD60-cV6P_fcBd4ctqRCIuU6CSBsT4UYQIrkixwbHjbl-AVoQAK3NAVERIvVlPqURqNc9Zhf1v4ZjE6F_64iAfuDaLU'
+        };
+        setCurrentUser(localUser);
+      }
+    } catch (e) {
+      console.error("Error setting authenticated user profile:", e);
+    }
+  };
+
+  // 2. Load data from Supabase when logged in
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const loadData = async () => {
+      try {
+        // Load branches
+        const { data: brs } = await supabase.from('branches').select('*');
+        if (brs) {
+          setBranches(brs.map(b => ({
+            id: b.id,
+            name: b.name,
+            nameAr: b.name_ar,
+            location: b.location || '',
+            locationAr: b.location_ar || '',
+            managerId: b.manager_id || '',
+            status: b.status as any
+          })));
+        }
+
+        // Load customers
+        const { data: custs } = await supabase.from('customers').select('*');
+        if (custs) {
+          setCustomers(custs.map(c => ({
+            id: c.id,
+            name: c.name,
+            nameAr: c.name_ar,
+            code: c.code || '',
+            contactEmail: c.contact_email || '',
+            phone: c.phone || '',
+            address: c.address || '',
+            addressAr: c.address_ar || ''
+          })));
+        }
+
+        // Load employees
+        const { data: emps } = await supabase.from('employees').select('*');
+        if (emps) {
+          setEmployees(emps.map(e => ({
+            id: e.id,
+            empId: e.emp_id,
+            name: e.name,
+            nameAr: e.name_ar,
+            role: e.role as any,
+            roleTitle: e.role_title || '',
+            roleTitleAr: e.role_title_ar || '',
+            branchId: e.branch_id || '',
+            email: e.email || '',
+            avatar: e.avatar || '',
+            status: e.status as any,
+            salary: Number(e.salary) || 0
+          })));
+        }
+
+        // Load income
+        const { data: incs } = await supabase.from('income').select('*');
+        if (incs) {
+          setIncome(incs.map(i => ({
+            id: i.id,
+            source: i.source,
+            sourceAr: i.source_ar,
+            amount: Number(i.amount),
+            date: i.date,
+            branchId: i.branch_id || '',
+            paymentMethod: i.payment_method as any,
+            invoiceId: i.invoice_id || undefined,
+            description: i.description || undefined,
+            descriptionAr: i.description_ar || undefined
+          })));
+        }
+
+        // Load expenses
+        const { data: exps } = await supabase.from('expenses').select('*');
+        if (exps) {
+          setExpenses(exps.map(e => ({
+            id: e.id,
+            entity: e.entity,
+            entityAr: e.entity_ar,
+            amount: Number(e.amount),
+            date: e.date,
+            branchId: e.branch_id || '',
+            category: e.category as any,
+            status: e.status as any,
+            attachmentUrl: e.attachment_url || undefined,
+            fileName: e.file_name || undefined,
+            description: e.description || undefined,
+            descriptionAr: e.description_ar || undefined
+          })));
+        }
+
+        // Load invoices
+        const { data: invs } = await supabase.from('invoices').select('*, invoice_items(*)');
+        if (invs) {
+          setInvoices(invs.map(i => ({
+            id: i.id,
+            invoiceNumber: i.invoice_number,
+            customerId: i.customer_id || '',
+            branchId: i.branch_id || '',
+            issueDate: i.issue_date,
+            dueDate: i.due_date,
+            totalAmount: Number(i.total_amount),
+            status: i.status as any,
+            paidAmount: Number(i.paid_amount),
+            items: i.invoice_items ? i.invoice_items.map((it: any) => ({
+              description: it.description || '',
+              descriptionAr: it.description_ar || '',
+              price: Number(it.price) || 0,
+              quantity: Number(it.quantity) || 0
+            })) : []
+          })));
+        }
+
+        // Load receipts
+        const { data: recs } = await supabase.from('receipts').select('*');
+        if (recs) {
+          setReceipts(recs.map(r => ({
+            id: r.id,
+            receiptNumber: r.receipt_number,
+            invoiceId: r.invoice_id || '',
+            amount: Number(r.amount),
+            date: r.date,
+            paymentMethod: r.payment_method || '',
+            branchId: r.branch_id || '',
+            notes: r.notes || undefined
+          })));
+        }
+
+        // Load products
+        const { data: prods } = await supabase.from('products').select('*');
+        if (prods) {
+          setProducts(prods.map(p => ({
+            id: p.id,
+            sku: p.sku,
+            name: p.name,
+            nameAr: p.name_ar,
+            type: p.type as any,
+            price: Number(p.price) || 0,
+            cost: Number(p.cost) || 0,
+            stock: Number(p.stock) || 0,
+            minStockAlert: Number(p.min_stock_alert) || 0,
+            description: p.description || '',
+            descriptionAr: p.description_ar || '',
+            category: p.category || '',
+            categoryAr: p.category_ar || ''
+          })));
+        }
+
+        // Load movements
+        const { data: mvts } = await supabase.from('movements').select('*');
+        if (mvts) {
+          setMovements(mvts.map(m => ({
+            id: m.id,
+            productId: m.product_id || '',
+            type: m.type as any,
+            quantity: Number(m.quantity) || 0,
+            date: m.date,
+            reference: m.reference || '',
+            notes: m.notes || '',
+            notesAr: m.notes_ar || '',
+            branchId: m.branch_id || ''
+          })));
+        }
+
+        // Load adjustments
+        const { data: adjs } = await supabase.from('adjustments').select('*');
+        if (adjs) {
+          setAdjustments(adjs.map(a => ({
+            id: a.id,
+            noteNumber: a.note_number,
+            type: a.type as any,
+            invoiceId: a.invoice_id || undefined,
+            customerId: a.customer_id || '',
+            branchId: a.branch_id || '',
+            amount: Number(a.amount) || 0,
+            date: a.date,
+            reason: a.reason || '',
+            reasonAr: a.reason_ar || '',
+            status: a.status as any,
+            createdBy: a.created_by || ''
+          })));
+        }
+
+        // Load system settings
+        const { data: sett } = await supabase.from('system_settings').select('*').eq('id', 1).single();
+        if (sett) {
+          setSystemSettings({
+            companyName: sett.company_name,
+            companyNameAr: sett.company_name_ar,
+            registrationNo: sett.registration_no || '',
+            logoUrl: sett.logo_url || '',
+            primaryCurrency: sett.primary_currency as any,
+            dateFormat: sett.date_format as any,
+            themePrimaryColor: sett.theme_primary_color as any,
+            allowThemeToggle: sett.allow_theme_toggle,
+            companyAddress: sett.company_address || '',
+            companyAddressAr: sett.company_address_ar || '',
+            companyPhone: sett.company_phone || '',
+            companyEmail: sett.company_email || '',
+            vatCompliance: sett.vat_compliance,
+            vatRatePct: Number(sett.vat_rate_pct) || 15,
+            invoicePrefix: sett.invoice_prefix || 'INV',
+            receiptPrefix: sett.receipt_prefix || 'REC',
+            defaultDueDays: Number(sett.default_due_days) || 30,
+            invoiceFooterTerms: sett.invoice_footer_terms || '',
+            invoiceFooterTermsAr: sett.invoice_footer_terms_ar || '',
+            receiptFooterTerms: sett.receipt_footer_terms || '',
+            receiptFooterTermsAr: sett.receipt_footer_terms_ar || '',
+            companySealUrl: sett.company_seal_url || undefined,
+            companySealName: sett.company_seal_name || undefined,
+            companySealNameAr: sett.company_seal_name_ar || undefined,
+            authorizedSignatureUrl: sett.authorized_signature_url || undefined,
+            authorizedSignatureName: sett.authorized_signature_name || undefined,
+            authorizedSignatureNameAr: sett.authorized_signature_name_ar || undefined,
+            showSealOnInvoices: sett.show_seal_on_invoices,
+            showSignatureOnInvoices: sett.show_signature_on_invoices,
+            defaultStaffSalary: Number(sett.default_staff_salary) || 3000,
+            allowStaffSelfEdit: sett.allow_staff_self_edit,
+            restrictInvoiceDeletion: sett.restrict_invoice_deletion,
+            enforceSalaryApproval: sett.enforce_salary_approval,
+            defaultBranchId: sett.default_branch_id || 'riyadh_hq',
+            enableBranchIsolation: sett.enable_branch_isolation,
+            maxBranchesAllowed: Number(sett.max_branches_allowed) || 10,
+            realTimeNotifications: sett.real_time_notifications,
+            twoFactorAuth: sett.two_factor_auth
+          });
+        }
+      } catch (err) {
+        console.error("Error loading data from Supabase:", err);
+      }
+    };
+
+    loadData();
+  }, [currentUser]);
 
   // Enforce RLS/Branch Isolation based on Role
   useEffect(() => {
@@ -388,7 +703,6 @@ export const useDb = () => {
   useEffect(() => { saveStored(KEY_MOVEMENTS, movements); }, [movements]);
   useEffect(() => { saveStored(KEY_ADJUSTMENTS, adjustments); }, [adjustments]);
   useEffect(() => { saveStored(KEY_SETTINGS, systemSettings); }, [systemSettings]);
-  useEffect(() => { saveStored(KEY_CURRENT_USER, currentUser); }, [currentUser]);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(KEY_LANG, language);
@@ -410,6 +724,33 @@ export const useDb = () => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
   }, [language]);
+
+  // Real Supabase Auth Operations
+  const signUp = async (email: string, password: string, name: string, nameAr: string, role: UserRole, branchId: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          nameAr,
+          role,
+          branchId
+        }
+      }
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
+    return data;
+  };
 
   // Auth operations
   const loginSim = (role: UserRole, branchId: string) => {
@@ -437,32 +778,67 @@ export const useDb = () => {
     }
   };
 
-  const logoutSim = () => {
+  const logoutSim = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
   };
 
   // CRUD utilities
-  const addIncome = (item: Omit<Income, 'id'>) => {
-    const newInc: Income = { ...item, id: `inc_${Date.now()}` };
+  const addIncome = async (item: Omit<Income, 'id'>) => {
+    const id = `inc_${Date.now()}`;
+    const newInc: Income = { ...item, id };
     setIncome(prev => [newInc, ...prev]);
+
+    await supabase.from('income').insert({
+      id,
+      source: item.source,
+      source_ar: item.sourceAr,
+      amount: item.amount,
+      date: item.date,
+      branch_id: item.branchId,
+      payment_method: item.paymentMethod,
+      invoice_id: item.invoiceId || null,
+      description: item.description || null,
+      description_ar: item.descriptionAr || null
+    });
+
     return newInc;
   };
 
-  const deleteIncome = (id: string) => {
+  const deleteIncome = async (id: string) => {
     setIncome(prev => prev.filter(i => i.id !== id));
+    await supabase.from('income').delete().eq('id', id);
   };
 
-  const addExpense = (item: Omit<Expense, 'id'>) => {
-    const newExp: Expense = { ...item, id: `exp_${Date.now()}` };
+  const addExpense = async (item: Omit<Expense, 'id'>) => {
+    const id = `exp_${Date.now()}`;
+    const newExp: Expense = { ...item, id };
     setExpenses(prev => [newExp, ...prev]);
+
+    await supabase.from('expenses').insert({
+      id,
+      entity: item.entity,
+      entity_ar: item.entityAr,
+      amount: item.amount,
+      date: item.date,
+      branch_id: item.branchId,
+      category: item.category,
+      status: item.status,
+      attachment_url: item.attachmentUrl || null,
+      file_name: item.fileName || null,
+      description: item.description || null,
+      description_ar: item.descriptionAr || null
+    });
+
     return newExp;
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = async (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
+    await supabase.from('expenses').delete().eq('id', id);
   };
 
-  const createInvoice = (item: Omit<Invoice, 'id' | 'invoiceNumber' | 'totalAmount' | 'paidAmount'>) => {
+  const createInvoice = async (item: Omit<Invoice, 'id' | 'invoiceNumber' | 'totalAmount' | 'paidAmount'>) => {
     const nextNum = invoices.length + 1;
     const prefix = systemSettings.invoicePrefix || 'INV';
     const invNum = `${prefix}-2026-${nextNum.toString().padStart(3, '0')}`;
@@ -470,28 +846,53 @@ export const useDb = () => {
     const hasVat = systemSettings.vatCompliance;
     const vatRate = systemSettings.vatRatePct ?? 15;
     const total = hasVat ? subtotal * (1 + vatRate / 100) : subtotal;
+    const id = `inv_${Date.now()}`;
     const newInv: Invoice = {
       ...item,
-      id: `inv_${Date.now()}`,
+      id,
       invoiceNumber: invNum,
       totalAmount: total,
       paidAmount: 0
     };
     setInvoices(prev => [newInv, ...prev]);
+
+    await supabase.from('invoices').insert({
+      id,
+      invoice_number: invNum,
+      customer_id: item.customerId,
+      branch_id: item.branchId,
+      issue_date: item.issueDate,
+      due_date: item.dueDate,
+      total_amount: total,
+      status: 'Unpaid',
+      paid_amount: 0
+    });
+
+    const dbItems = item.items.map(it => ({
+      invoice_id: id,
+      description: it.description,
+      description_ar: it.descriptionAr,
+      price: it.price,
+      quantity: it.quantity
+    }));
+    await supabase.from('invoice_items').insert(dbItems);
+
     return newInv;
   };
 
-  const deleteInvoice = (id: string) => {
+  const deleteInvoice = async (id: string) => {
     setInvoices(prev => prev.filter(i => i.id !== id));
+    await supabase.from('invoices').delete().eq('id', id);
   };
 
-  const recordReceipt = (item: Omit<Receipt, 'id' | 'receiptNumber'>) => {
+  const recordReceipt = async (item: Omit<Receipt, 'id' | 'receiptNumber'>) => {
     const nextNum = receipts.length + 1;
     const prefix = systemSettings.receiptPrefix || 'REC';
     const recNum = `${prefix}-2026-${nextNum.toString().padStart(3, '0')}`;
+    const id = `rec_${Date.now()}`;
     const newRec: Receipt = {
       ...item,
-      id: `rec_${Date.now()}`,
+      id,
       receiptNumber: recNum
     };
     
@@ -506,6 +907,12 @@ export const useDb = () => {
         } else if (newPaid === 0) {
           newStatus = 'Unpaid';
         }
+
+        supabase.from('invoices').update({
+          paid_amount: newPaid,
+          status: newStatus
+        }).eq('id', inv.id).then();
+
         return {
           ...inv,
           paidAmount: newPaid,
@@ -516,10 +923,22 @@ export const useDb = () => {
     }));
 
     setReceipts(prev => [newRec, ...prev]);
+
+    await supabase.from('receipts').insert({
+      id,
+      receipt_number: recNum,
+      invoice_id: item.invoiceId,
+      amount: item.amount,
+      date: item.date,
+      payment_method: item.paymentMethod,
+      branch_id: item.branchId,
+      notes: item.notes || null
+    });
+
     return newRec;
   };
 
-  const deleteReceipt = (id: string) => {
+  const deleteReceipt = async (id: string) => {
     const rec = receipts.find(r => r.id === id);
     if (rec) {
       // Refund linked invoice balance
@@ -532,6 +951,12 @@ export const useDb = () => {
           } else if (newPaid >= inv.totalAmount) {
             newStatus = 'Paid';
           }
+
+          supabase.from('invoices').update({
+            paid_amount: newPaid,
+            status: newStatus
+          }).eq('id', inv.id).then();
+
           return {
             ...inv,
             paidAmount: newPaid,
@@ -542,66 +967,194 @@ export const useDb = () => {
       }));
     }
     setReceipts(prev => prev.filter(r => r.id !== id));
+    await supabase.from('receipts').delete().eq('id', id);
   };
 
-  const addBranch = (item: Omit<Branch, 'id'>) => {
-    const newB: Branch = { ...item, id: `br_${Date.now()}` };
+  const addBranch = async (item: Omit<Branch, 'id'>) => {
+    const id = `br_${Date.now()}`;
+    const newB: Branch = { ...item, id };
     setBranches(prev => [...prev, newB]);
+
+    await supabase.from('branches').insert({
+      id,
+      name: item.name,
+      name_ar: item.nameAr,
+      location: item.location,
+      location_ar: item.locationAr,
+      manager_id: item.managerId || null,
+      status: item.status
+    });
+
     return newB;
   };
 
-  const editBranch = (item: Branch) => {
+  const editBranch = async (item: Branch) => {
     setBranches(prev => prev.map(b => b.id === item.id ? item : b));
+
+    await supabase.from('branches').update({
+      name: item.name,
+      name_ar: item.nameAr,
+      location: item.location,
+      location_ar: item.locationAr,
+      manager_id: item.managerId || null,
+      status: item.status
+    }).eq('id', item.id);
   };
 
-  const deleteBranch = (id: string) => {
+  const deleteBranch = async (id: string) => {
     setBranches(prev => prev.filter(b => b.id !== id));
+    await supabase.from('branches').delete().eq('id', id);
   };
 
-  const addEmployee = (item: Omit<Employee, 'id'>) => {
-    const newEmp: Employee = { ...item, id: `emp_${Date.now()}` };
+  const addEmployee = async (item: Omit<Employee, 'id'> & { password?: string }) => {
+    const tempPassword = item.password || (item.email.split('@')[0] + "123!");
+    const branchVal = item.branchId === 'all' ? null : item.branchId;
+
+    const { data: userId, error } = await supabase.rpc('create_user_admin', {
+      p_email: item.email,
+      p_password: tempPassword,
+      p_role: item.role,
+      p_name: item.name,
+      p_name_ar: item.nameAr,
+      p_branch_id: branchVal
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const newEmp: Employee = {
+      ...item,
+      id: userId
+    };
+    
     setEmployees(prev => [...prev, newEmp]);
     return newEmp;
   };
 
-  const editEmployee = (item: Employee) => {
+  const editEmployee = async (item: Employee) => {
     setEmployees(prev => prev.map(e => e.id === item.id ? item : e));
+
+    const branchVal = item.branchId === 'all' ? null : item.branchId;
+
+    await supabase.from('employees').update({
+      name: item.name,
+      name_ar: item.nameAr,
+      role: item.role,
+      role_title: item.roleTitle,
+      role_title_ar: item.roleTitleAr,
+      branch_id: branchVal,
+      email: item.email,
+      avatar: item.avatar,
+      status: item.status,
+      salary: item.salary
+    }).eq('id', item.id);
+
+    await supabase.from('profiles').update({
+      name: item.name,
+      name_ar: item.nameAr,
+      role: item.role,
+      branch_id: branchVal,
+      email: item.email,
+      avatar: item.avatar
+    }).eq('id', item.id);
   };
 
-  const deleteEmployee = (id: string) => {
+  const deleteEmployee = async (id: string) => {
     setEmployees(prev => prev.filter(e => e.id !== id));
+    await supabase.from('employees').delete().eq('id', id);
+    await supabase.from('profiles').delete().eq('id', id);
   };
 
-  const addCustomer = (item: Omit<Customer, 'id'>) => {
-    const newC: Customer = { ...item, id: `cus_${Date.now()}` };
+  const addCustomer = async (item: Omit<Customer, 'id'>) => {
+    const id = `cus_${Date.now()}`;
+    const newC: Customer = { ...item, id };
     setCustomers(prev => [...prev, newC]);
+
+    await supabase.from('customers').insert({
+      id,
+      name: item.name,
+      name_ar: item.nameAr,
+      code: item.code,
+      contact_email: item.contactEmail,
+      phone: item.phone,
+      address: item.address,
+      address_ar: item.addressAr
+    });
+
     return newC;
   };
 
-  const editCustomer = (item: Customer) => {
+  const editCustomer = async (item: Customer) => {
     setCustomers(prev => prev.map(c => c.id === item.id ? item : c));
+
+    await supabase.from('customers').update({
+      name: item.name,
+      name_ar: item.nameAr,
+      code: item.code,
+      contact_email: item.contactEmail,
+      phone: item.phone,
+      address: item.address,
+      address_ar: item.addressAr
+    }).eq('id', item.id);
   };
 
-  const deleteCustomer = (id: string) => {
+  const deleteCustomer = async (id: string) => {
     setCustomers(prev => prev.filter(c => c.id !== id));
+    await supabase.from('customers').delete().eq('id', id);
   };
 
-  const addProduct = (item: Omit<ProductItem, 'id'>) => {
-    const newP: ProductItem = { ...item, id: `prod_${Date.now()}` };
+  const addProduct = async (item: Omit<ProductItem, 'id'>) => {
+    const id = `prod_${Date.now()}`;
+    const newP: ProductItem = { ...item, id };
     setProducts(prev => [newP, ...prev]);
+
+    await supabase.from('products').insert({
+      id,
+      sku: item.sku,
+      name: item.name,
+      name_ar: item.nameAr,
+      type: item.type,
+      price: item.price,
+      cost: item.cost,
+      stock: item.stock,
+      min_stock_alert: item.minStockAlert,
+      description: item.description,
+      description_ar: item.descriptionAr,
+      category: item.category,
+      category_ar: item.categoryAr
+    });
+
     return newP;
   };
 
-  const editProduct = (item: ProductItem) => {
+  const editProduct = async (item: ProductItem) => {
     setProducts(prev => prev.map(p => p.id === item.id ? item : p));
+
+    await supabase.from('products').update({
+      sku: item.sku,
+      name: item.name,
+      name_ar: item.nameAr,
+      type: item.type,
+      price: item.price,
+      cost: item.cost,
+      stock: item.stock,
+      min_stock_alert: item.minStockAlert,
+      description: item.description,
+      description_ar: item.descriptionAr,
+      category: item.category,
+      category_ar: item.categoryAr
+    }).eq('id', item.id);
   };
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string) => {
     setProducts(prev => prev.filter(p => p.id !== id));
+    await supabase.from('products').delete().eq('id', id);
   };
 
-  const addMovement = (item: Omit<InventoryMovement, 'id'>) => {
-    const newM: InventoryMovement = { ...item, id: `mov_${Date.now()}` };
+  const addMovement = async (item: Omit<InventoryMovement, 'id'>) => {
+    const id = `mov_${Date.now()}`;
+    const newM: InventoryMovement = { ...item, id };
     setProducts(prev => prev.map(p => {
       if (p.id === item.productId) {
         const diff = item.type === 'In' ? item.quantity : -item.quantity;
@@ -609,24 +1162,63 @@ export const useDb = () => {
       }
       return p;
     }));
+    
+    // Update product stock in database too
+    const prod = products.find(p => p.id === item.productId);
+    if (prod) {
+      const diff = item.type === 'In' ? item.quantity : -item.quantity;
+      const newStock = Math.max(0, prod.stock + diff);
+      supabase.from('products').update({ stock: newStock }).eq('id', item.productId).then();
+    }
+
     setMovements(prev => [newM, ...prev]);
+
+    await supabase.from('movements').insert({
+      id,
+      product_id: item.productId,
+      type: item.type,
+      quantity: item.quantity,
+      date: item.date,
+      reference: item.reference,
+      notes: item.notes,
+      notes_ar: item.notesAr,
+      branch_id: item.branchId
+    });
+
     return newM;
   };
 
-  const addAdjustment = (item: Omit<FinancialAdjustment, 'id' | 'noteNumber'>) => {
+  const addAdjustment = async (item: Omit<FinancialAdjustment, 'id' | 'noteNumber'>) => {
     const nextNum = adjustments.length + 1;
     const prefix = item.type === 'Credit Note' ? 'CN' : 'DN';
     const noteNum = `${prefix}-2026-${nextNum.toString().padStart(3, '0')}`;
+    const id = `adj_${Date.now()}`;
     const newAdj: FinancialAdjustment = {
       ...item,
-      id: `adj_${Date.now()}`,
+      id,
       noteNumber: noteNum
     };
     setAdjustments(prev => [newAdj, ...prev]);
+
+    await supabase.from('adjustments').insert({
+      id,
+      note_number: noteNum,
+      type: item.type,
+      invoice_id: item.invoiceId || null,
+      customer_id: item.customerId,
+      branch_id: item.branchId,
+      amount: item.amount,
+      date: item.date,
+      reason: item.reason,
+      reason_ar: item.reasonAr,
+      status: item.status,
+      created_by: item.createdBy
+    });
+
     return newAdj;
   };
 
-  const editAdjustmentStatus = (id: string, status: 'Approved' | 'Pending' | 'Rejected') => {
+  const editAdjustmentStatus = async (id: string, status: 'Approved' | 'Pending' | 'Rejected') => {
     setAdjustments(prev => prev.map(a => {
       if (a.id === id) {
         if (status === 'Approved' && a.status !== 'Approved' && a.invoiceId) {
@@ -641,6 +1233,12 @@ export const useDb = () => {
               }
               const isPaid = inv.paidAmount >= newTotal;
               const newStatus: InvoiceStatus = isPaid ? 'Paid' : (inv.paidAmount > 0 ? 'Partial' : 'Unpaid');
+
+              supabase.from('invoices').update({
+                total_amount: newTotal,
+                status: newStatus
+              }).eq('id', inv.id).then();
+
               return { 
                 ...inv, 
                 totalAmount: newTotal,
@@ -654,6 +1252,53 @@ export const useDb = () => {
       }
       return a;
     }));
+
+    await supabase.from('adjustments').update({ status }).eq('id', id);
+  };
+
+  const updateSystemSettings = async (settings: SystemSettings) => {
+    setSystemSettings(settings);
+    
+    await supabase.from('system_settings').update({
+      company_name: settings.companyName,
+      company_name_ar: settings.companyNameAr,
+      registration_no: settings.registrationNo,
+      logo_url: settings.logoUrl,
+      primary_currency: settings.primaryCurrency,
+      date_format: settings.dateFormat,
+      theme_primary_color: settings.themePrimaryColor,
+      allow_theme_toggle: settings.allowThemeToggle,
+      company_address: settings.companyAddress,
+      company_address_ar: settings.companyAddressAr,
+      company_phone: settings.companyPhone,
+      company_email: settings.companyEmail,
+      vat_compliance: settings.vatCompliance,
+      vat_rate_pct: settings.vatRatePct,
+      invoice_prefix: settings.invoicePrefix,
+      receipt_prefix: settings.receiptPrefix,
+      default_due_days: settings.defaultDueDays,
+      invoice_footer_terms: settings.invoiceFooterTerms,
+      invoice_footer_terms_ar: settings.invoiceFooterTermsAr,
+      receipt_footer_terms: settings.receiptFooterTerms,
+      receipt_footer_terms_ar: settings.receiptFooterTermsAr,
+      company_seal_url: settings.companySealUrl || null,
+      company_seal_name: settings.companySealName || null,
+      company_seal_name_ar: settings.companySealNameAr || null,
+      authorized_signature_url: settings.authorizedSignatureUrl || null,
+      authorized_signature_name: settings.authorizedSignatureName || null,
+      authorized_signature_name_ar: settings.authorizedSignatureNameAr || null,
+      show_seal_on_invoices: settings.showSealOnInvoices,
+      show_signature_on_invoices: settings.showSignatureOnInvoices,
+      default_staff_salary: settings.defaultStaffSalary,
+      allow_staff_self_edit: settings.allowStaffSelfEdit,
+      restrict_invoice_deletion: settings.restrictInvoiceDeletion,
+      enforce_salary_approval: settings.enforceSalaryApproval,
+      default_branch_id: settings.defaultBranchId,
+      enable_branch_isolation: settings.enableBranchIsolation,
+      max_branches_allowed: settings.maxBranchesAllowed,
+      real_time_notifications: settings.realTimeNotifications,
+      two_factor_auth: settings.twoFactorAuth
+    }).eq('id', 1);
   };
 
   // State filtering logic (Branch Isolation / RLS)
@@ -755,7 +1400,7 @@ export const useDb = () => {
     adjustments,
     filteredAdjustments,
     systemSettings,
-    setSystemSettings,
+    setSystemSettings: updateSystemSettings,
     currentUser,
     setCurrentUser,
     language,
@@ -764,6 +1409,8 @@ export const useDb = () => {
     setCurrentBranchId,
     loginSim,
     logoutSim,
+    signUp,
+    signIn,
     addIncome,
     deleteIncome,
     addExpense,

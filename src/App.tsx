@@ -23,7 +23,7 @@ export default function App() {
 
   // If user is not authorized, trigger login portal
   if (!db.currentUser) {
-    return <AuthSim login={db.loginSim} lang={db.language} />;
+    return <AuthSim db={db} lang={db.language} />;
   }
 
   // Define tab navigation rendering

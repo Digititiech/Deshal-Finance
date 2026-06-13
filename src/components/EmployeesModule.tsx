@@ -9,7 +9,8 @@ import {
   X, 
   Mail, 
   Briefcase, 
-  Building 
+  Building,
+  ShieldAlert 
 } from 'lucide-react';
 
 interface EmployeesModuleProps {
@@ -50,6 +51,9 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [email, setEmail] = useState('');
   const [salary, setSalary] = useState('');
   const [status, setStatus] = useState<EmployeeStatus>('Active');
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const getBranchName = (brId: string) => {
     const b = branches.find(item => item.id === brId);
@@ -68,6 +72,9 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setEmail('');
     setSalary('');
     setStatus('Active');
+    setPassword('');
+    setErrorMsg(null);
+    setSuccessMsg(null);
     setShowFormModal(true);
   };
 
@@ -82,12 +89,19 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setEmail(e.email);
     setSalary(e.salary.toString());
     setStatus(e.status);
+    setPassword('');
+    setErrorMsg(null);
+    setSuccessMsg(null);
     setShowFormModal(true);
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!name || !roleTitle || !email) return;
+    if (!editingEmployee && !password) return;
+
+    setErrorMsg(null);
+    setSuccessMsg(null);
 
     const payload = {
       empId: editingEmployee ? editingEmployee.empId : `FT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -100,16 +114,21 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       email,
       avatar: editingEmployee ? editingEmployee.avatar : 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
       status,
-      salary: parseFloat(salary) || 3000
+      salary: parseFloat(salary) || 3000,
+      password: editingEmployee ? undefined : password
     };
 
-    if (editingEmployee) {
-      editEmployee({ ...editingEmployee, ...payload });
-    } else {
-      addEmployee(payload);
+    try {
+      if (editingEmployee) {
+        await editEmployee({ ...editingEmployee, ...payload });
+        setShowFormModal(false);
+      } else {
+        await addEmployee(payload);
+        setShowFormModal(false);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || (lang === 'ar' ? 'فشل إلحاق الكادر المالي. يرجى مراجعة الأذونات أو البريد الإلكتروني.' : 'Failed to onboard personnel. Please check permissions or email address.'));
     }
-
-    setShowFormModal(false);
   };
 
   // Filter application
@@ -138,7 +157,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
           </p>
         </div>
 
-        {(userRole === 'Super Admin' || userRole === 'Admin') && (
+        {(userRole === 'Super Admin' || userRole === 'Admin' || userRole === 'Manager') && (
           <button
             onClick={handleOpenCreate}
             className="flex items-center space-x-1.5 space-x-reverse px-4 py-2 bg-emerald-600 hover:bg-emerald-700 font-bold text-white text-xs rounded-xl shadow-sm transition duration-150 active:scale-95 cursor-pointer shrink-0"
@@ -220,7 +239,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 </div>
 
                 <div className="flex gap-1.5 items-center shrink-0">
-                  {(userRole === 'Super Admin' || userRole === 'Admin') && (
+                  {(userRole === 'Super Admin' || userRole === 'Admin' || userRole === 'Manager') && (
                     <button
                       onClick={() => handleOpenEdit(emp)}
                       className="w-7 h-7 rounded-md bg-slate-50 hover:bg-slate-100 hover:text-emerald-750 text-slate-500 flex items-center justify-center cursor-pointer border border-slate-200 transition duration-100 shadow-xs"
@@ -293,6 +312,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
               <span>{editingEmployee ? (lang === 'ar' ? 'تعديل بيانات الموظف المعني' : 'Update Staff Profile Coordinates') : (lang === 'ar' ? 'إلحاق وتوظيف كادر جديد' : 'Onboard Workforce Member')}</span>
             </h3>
 
+            {errorMsg && (
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl flex items-start gap-2 text-start">
+                <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4 text-xs font-sans text-start">
               <div className="grid grid-cols-2 gap-3">
                 {/* Name Eng */}
@@ -323,7 +349,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
               {/* Email */}
               <div>
-                <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'البريد الإلكتروني المعتمر' : 'Work Email address'}</label>
+                <label className="text-slate-550 text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'البريد الإلكتروني المعتمر' : 'Work Email address'}</label>
                 <input
                   type="email"
                   required
@@ -333,6 +359,21 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none font-mono shadow-sm"
                 />
               </div>
+
+              {/* Password (for new onboarding) */}
+              {!editingEmployee && (
+                <div>
+                  <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'كلمة المرور الابتدائية' : 'Initial Password'}</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={lang === 'ar' ? 'أدخل كلمة مرور لا تقل عن 6 أحرف' : 'Enter password (min 6 chars)'}
+                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none font-mono shadow-sm"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 {/* Role Title Eng */}
