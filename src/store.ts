@@ -428,6 +428,7 @@ export const useDb = () => {
           email: authUser.email || '',
           role: (profile.role || 'Employee') as UserRole,
           branchId: branchVal,
+          branchIds: profile.branch_ids || (profile.branch_id ? [profile.branch_id] : []),
           avatar: profile.avatar || authUser.user_metadata.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_Um1BQxQ3_e2vnP_u0Xlw7mHhhkfLJZRCpPhytJ_0ycQyg55hfd8TgzK1ADVO3fg31i8ys_3WBw1d3rvARWnsawf7ftGgqZrH4jwhCL9xlnPRcvNzykhrCuLlK5A_xSnjNMZZugqcXd8ho0F_WQ4-RZAX4thXvUZaL9dNudjK-C18Dxe1PD60-cV6P_fcBd4ctqRCIuU6CSBsT4UYQIrkixwbHjbl-AVoQAK3NAVERIvVlPqURqNc9Zhf1v4ZjE6F_64iAfuDaLU'
         };
         setCurrentUser(localUser);
@@ -439,6 +440,7 @@ export const useDb = () => {
           email: authUser.email || '',
           role: (authUser.user_metadata.role || 'Employee') as UserRole,
           branchId: authUser.user_metadata.branchId || 'riyadh_hq',
+          branchIds: authUser.user_metadata.branchIds || (authUser.user_metadata.branchId ? [authUser.user_metadata.branchId] : []),
           avatar: authUser.user_metadata.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_Um1BQxQ3_e2vnP_u0Xlw7mHhhkfLJZRCpPhytJ_0ycQyg55hfd8TgzK1ADVO3fg31i8ys_3WBw1d3rvARWnsawf7ftGgqZrH4jwhCL9xlnPRcvNzykhrCuLlK5A_xSnjNMZZugqcXd8ho0F_WQ4-RZAX4thXvUZaL9dNudjK-C18Dxe1PD60-cV6P_fcBd4ctqRCIuU6CSBsT4UYQIrkixwbHjbl-AVoQAK3NAVERIvVlPqURqNc9Zhf1v4ZjE6F_64iAfuDaLU'
         };
         setCurrentUser(localUser);
@@ -495,6 +497,7 @@ export const useDb = () => {
             roleTitle: e.role_title || '',
             roleTitleAr: e.role_title_ar || '',
             branchId: e.branch_id || '',
+            branchIds: e.branch_ids || (e.branch_id ? [e.branch_id] : []),
             email: e.email || '',
             avatar: e.avatar || '',
             status: e.status as any,
@@ -1013,7 +1016,7 @@ export const useDb = () => {
 
   const addEmployee = async (item: Omit<Employee, 'id'> & { password?: string }) => {
     const tempPassword = item.password || (item.email.split('@')[0] + "123!");
-    const branchVal = item.branchId === 'all' ? null : item.branchId;
+    const branchIdsVal = item.branchIds || (item.branchId && item.branchId !== 'all' ? [item.branchId] : []);
 
     const { data: userId, error } = await supabase.rpc('create_user_admin', {
       p_email: item.email,
@@ -1021,7 +1024,7 @@ export const useDb = () => {
       p_role: item.role,
       p_name: item.name,
       p_name_ar: item.nameAr,
-      p_branch_id: branchVal
+      p_branch_ids: branchIdsVal
     });
 
     if (error) {
@@ -1030,7 +1033,8 @@ export const useDb = () => {
 
     const newEmp: Employee = {
       ...item,
-      id: userId
+      id: userId,
+      branchIds: branchIdsVal
     };
     
     setEmployees(prev => [...prev, newEmp]);
@@ -1041,6 +1045,7 @@ export const useDb = () => {
     setEmployees(prev => prev.map(e => e.id === item.id ? item : e));
 
     const branchVal = item.branchId === 'all' ? null : item.branchId;
+    const branchIdsVal = item.branchIds || (item.branchId && item.branchId !== 'all' ? [item.branchId] : []);
 
     await supabase.from('employees').update({
       name: item.name,
@@ -1049,6 +1054,7 @@ export const useDb = () => {
       role_title: item.roleTitle,
       role_title_ar: item.roleTitleAr,
       branch_id: branchVal,
+      branch_ids: branchIdsVal,
       email: item.email,
       avatar: item.avatar,
       status: item.status,
@@ -1060,6 +1066,7 @@ export const useDb = () => {
       name_ar: item.nameAr,
       role: item.role,
       branch_id: branchVal,
+      branch_ids: branchIdsVal,
       email: item.email,
       avatar: item.avatar
     }).eq('id', item.id);
@@ -1307,35 +1314,31 @@ export const useDb = () => {
   };
 
   // State filtering logic (Branch Isolation / RLS)
-  const filterIncomeByBranch = (items: Income[]): Income[] => {
-    if (currentBranchId === 'all') return items;
-    return items.filter(item => item.branchId === currentBranchId);
+  const filterByBranch = <T extends { branchId: string }>(items: T[]): T[] => {
+    if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant') {
+      if (currentBranchId === 'all') return items;
+      return items.filter(item => item.branchId === currentBranchId);
+    }
+    // Managers/Employees:
+    const allowedIds = currentUser?.branchIds && currentUser.branchIds.length > 0
+      ? currentUser.branchIds
+      : [currentUser?.branchId].filter(Boolean) as string[];
+    
+    if (currentBranchId === 'all') {
+      return items.filter(item => allowedIds.includes(item.branchId));
+    }
+    if (allowedIds.includes(currentBranchId)) {
+      return items.filter(item => item.branchId === currentBranchId);
+    }
+    return [];
   };
 
-  const filterExpenseByBranch = (items: Expense[]): Expense[] => {
-    if (currentBranchId === 'all') return items;
-    return items.filter(item => item.branchId === currentBranchId);
-  };
-
-  const filterInvoiceByBranch = (items: Invoice[]): Invoice[] => {
-    if (currentBranchId === 'all') return items;
-    return items.filter(item => item.branchId === currentBranchId);
-  };
-
-  const filterReceiptByBranch = (items: Receipt[]): Receipt[] => {
-    if (currentBranchId === 'all') return items;
-    return items.filter(item => item.branchId === currentBranchId);
-  };
-
-  const filterAdjustmentByBranch = (items: FinancialAdjustment[]): FinancialAdjustment[] => {
-    if (currentBranchId === 'all') return items;
-    return items.filter(item => item.branchId === currentBranchId);
-  };
-
-  const filterMovementByBranch = (items: InventoryMovement[]): InventoryMovement[] => {
-    if (currentBranchId === 'all') return items;
-    return items.filter(item => item.branchId === currentBranchId);
-  };
+  const filterIncomeByBranch = (items: Income[]): Income[] => filterByBranch(items);
+  const filterExpenseByBranch = (items: Expense[]): Expense[] => filterByBranch(items);
+  const filterInvoiceByBranch = (items: Invoice[]): Invoice[] => filterByBranch(items);
+  const filterReceiptByBranch = (items: Receipt[]): Receipt[] => filterByBranch(items);
+  const filterAdjustmentByBranch = (items: FinancialAdjustment[]): FinancialAdjustment[] => filterByBranch(items);
+  const filterMovementByBranch = (items: InventoryMovement[]): InventoryMovement[] => filterByBranch(items);
 
   const filteredIncome = filterIncomeByBranch(income);
   const filteredExpenses = filterExpenseByBranch(expenses);
@@ -1343,8 +1346,48 @@ export const useDb = () => {
   const filteredReceipts = filterReceiptByBranch(receipts);
   const filteredAdjustments = filterAdjustmentByBranch(adjustments);
   const filteredMovements = filterMovementByBranch(movements);
-  const filteredEmployees = currentBranchId === 'all' ? employees : employees.filter(e => e.branchId === currentBranchId);
-  const filteredBranches = currentBranchId === 'all' ? branches : branches.filter(b => b.id === currentBranchId);
+
+  const filteredEmployees = (() => {
+    if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant') {
+      if (currentBranchId === 'all') return employees;
+      return employees.filter(e => e.branchId === currentBranchId);
+    }
+    // Managers/Employees:
+    const allowedIds = currentUser?.branchIds && currentUser.branchIds.length > 0
+      ? currentUser.branchIds
+      : [currentUser?.branchId].filter(Boolean) as string[];
+    
+    if (currentBranchId === 'all') {
+      return employees.filter(e => {
+        if (e.branchIds && e.branchIds.length > 0) {
+          return e.branchIds.some(id => allowedIds.includes(id));
+        }
+        return allowedIds.includes(e.branchId);
+      });
+    }
+    return employees.filter(e => {
+      if (e.branchIds && e.branchIds.length > 0) {
+        return e.branchIds.includes(currentBranchId);
+      }
+      return e.branchId === currentBranchId;
+    });
+  })();
+
+  const filteredBranches = (() => {
+    if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant') {
+      if (currentBranchId === 'all') return branches;
+      return branches.filter(b => b.id === currentBranchId);
+    }
+    // Managers/Employees:
+    const allowedIds = currentUser?.branchIds && currentUser.branchIds.length > 0
+      ? currentUser.branchIds
+      : [currentUser?.branchId].filter(Boolean) as string[];
+    
+    if (currentBranchId === 'all') {
+      return branches.filter(b => allowedIds.includes(b.id));
+    }
+    return branches.filter(b => b.id === currentBranchId && allowedIds.includes(b.id));
+  })();
 
   // Financial Calculations reactively based on filter state
   const totalIncomeVal = filteredIncome.reduce((sum, item) => sum + item.amount, 0);

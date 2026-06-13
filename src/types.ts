@@ -29,6 +29,7 @@ export interface User {
   email: string;
   role: UserRole;
   branchId: string; // 'all' or specific Branch ID
+  branchIds?: string[];
   avatar: string;
 }
 
@@ -111,6 +112,7 @@ export interface Employee {
   roleTitle: string;
   roleTitleAr: string;
   branchId: string;
+  branchIds?: string[];
   email: string;
   avatar: string;
   status: EmployeeStatus;

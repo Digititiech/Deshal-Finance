@@ -231,12 +231,26 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   // Filter available branches based on User permissions
-  const allowedBranches = currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant'
-    ? [{ id: 'all', name: 'All Branches', nameAr: 'جميع الفروع' }, ...branches]
-    : branches.filter(b => b.id === currentUser?.branchId);
+  const allowedBranches = (() => {
+    if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant') {
+      return [{ id: 'all', name: 'All Branches', nameAr: 'جميع الفروع' }, ...branches];
+    }
+    
+    const userBranchIds = currentUser?.branchIds && currentUser.branchIds.length > 0
+      ? currentUser.branchIds
+      : (currentUser?.branchId ? [currentUser.branchId] : []);
+    
+    const userBranches = branches.filter(b => userBranchIds.includes(b.id));
+    
+    if (userBranches.length > 1) {
+      return [{ id: 'all', name: 'All My Branches', nameAr: 'جميع فروعي' }, ...userBranches];
+    }
+    
+    return userBranches;
+  })();
 
   const activeBranchName = currentBranchId === 'all'
-    ? (language === 'ar' ? 'جميع الفروع' : 'All Regional Hubs')
+    ? (language === 'ar' ? (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant' ? 'جميع الفروع' : 'جميع فروعي') : (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant' ? 'All Regional Hubs' : 'All My Branches'))
     : (language === 'ar' 
         ? branches.find(b => b.id === currentBranchId)?.nameAr 
         : branches.find(b => b.id === currentBranchId)?.name);

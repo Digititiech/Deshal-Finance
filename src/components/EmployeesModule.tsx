@@ -48,6 +48,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [roleTitle, setRoleTitle] = useState('');
   const [roleTitleAr, setRoleTitleAr] = useState('');
   const [branchId, setBranchId] = useState('');
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
   const [email, setEmail] = useState('');
   const [salary, setSalary] = useState('');
   const [status, setStatus] = useState<EmployeeStatus>('Active');
@@ -69,6 +70,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setRoleTitle('');
     setRoleTitleAr('');
     setBranchId(branches[0]?.id || '');
+    setSelectedBranchIds(branches[0]?.id ? [branches[0].id] : []);
     setEmail('');
     setSalary('');
     setStatus('Active');
@@ -86,6 +88,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     setRoleTitle(e.roleTitle);
     setRoleTitleAr(e.roleTitleAr);
     setBranchId(e.branchId);
+    setSelectedBranchIds(e.branchIds || (e.branchId ? [e.branchId] : []));
     setEmail(e.email);
     setSalary(e.salary.toString());
     setStatus(e.status);
@@ -99,6 +102,10 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
     ev.preventDefault();
     if (!name || !roleTitle || !email) return;
     if (!editingEmployee && !password) return;
+    if (selectedBranchIds.length === 0) {
+      setErrorMsg(lang === 'ar' ? 'يجب اختيار فرع واحد على الأقل.' : 'At least one branch must be selected.');
+      return;
+    }
 
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -110,7 +117,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       role,
       roleTitle,
       roleTitleAr: roleTitleAr || roleTitle,
-      branchId,
+      branchId: selectedBranchIds[0] || '',
+      branchIds: selectedBranchIds,
       email,
       avatar: editingEmployee ? editingEmployee.avatar : 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
       status,
@@ -139,7 +147,8 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       emp.empId.toLowerCase().includes(search.toLowerCase());
 
     const matchRole = roleFilter === 'all' || emp.role === roleFilter;
-    const matchBranch = branchFilter === 'all' || emp.branchId === branchFilter;
+    const matchBranch = branchFilter === 'all' || 
+      (emp.branchIds && emp.branchIds.length > 0 ? emp.branchIds.includes(branchFilter) : emp.branchId === branchFilter);
 
     return matchSearch && matchRole && matchBranch;
   });
@@ -231,7 +240,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     referrerPolicy="no-referrer"
                   />
                   <div className="truncate text-left">
-                    <h4 className="text-xs font-bold text-slate-805 text-slate-800 truncate group-hover:text-emerald-700 duration-100 uppercase">
+                    <h4 className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-700 duration-100 uppercase">
                       {lang === 'ar' ? emp.nameAr : emp.name}
                     </h4>
                     <span className="text-xxs text-slate-400 font-mono tracking-wide mt-1 block leading-none">{emp.empId}</span>
@@ -247,9 +256,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                       <Edit className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {userRole === 'Super Admin' && (
+                  {(userRole === 'Super Admin' || userRole === 'Admin' || userRole === 'Manager') && (
                     <button
-                      onClick={() => deleteEmployee(emp.id)}
+                      onClick={() => {
+                        if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا المستخدم نهائياً؟' : 'Are you sure you want to permanently delete this user?')) {
+                          deleteEmployee(emp.id);
+                        }
+                      }}
                       className="w-7 h-7 rounded-md bg-slate-50 hover:bg-rose-50 text-rose-600 flex items-center justify-center cursor-pointer border border-slate-200 transition duration-100 shadow-xs"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -270,7 +283,19 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 </div>
                 <div className="flex justify-between pb-1.5 items-center">
                   <span className="text-slate-400 flex items-center gap-1"><Building className="w-3 h-3" /> {lang === 'ar' ? 'فرع العمل:' : 'Dispatched Branch:'}</span>
-                  <span className="text-slate-700 font-semibold leading-none">{getBranchName(emp.branchId)}</span>
+                  <div className="flex flex-wrap gap-1 justify-end max-w-[180px]">
+                    {emp.branchIds && emp.branchIds.length > 0 ? (
+                      emp.branchIds.map(bId => (
+                        <span key={bId} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[10px] font-semibold border border-slate-200">
+                          {getBranchName(bId)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[10px] font-semibold border border-slate-200">
+                        {getBranchName(emp.branchId)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -404,7 +429,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 {/* System Privilege Role */}
-                <div>
+                <div className="col-span-2 sm:col-span-1">
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'صلاحية نظام النفاذ' : 'System Access Role'}</label>
                   <select
                     value={role}
@@ -418,21 +443,41 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                     <option value="Employee">Employee</option>
                   </select>
                 </div>
+              </div>
 
-                {/* Dispatch Branch */}
-                <div>
-                  <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'تعيين الفرع التابع' : 'Dispatch Assigned Branch'}</label>
-                  <select
-                    value={branchId}
-                    onChange={(e) => setBranchId(e.target.value)}
-                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-700 rounded-xl p-2.5 outline-none shadow-sm"
-                  >
-                    {branches.map(br => (
-                      <option key={br.id} value={br.id}>
-                        {lang === 'ar' ? br.nameAr : br.name}
-                      </option>
-                    ))}
-                  </select>
+              {/* Dispatch Branches Multi-select Checkbox Grid */}
+              <div className="space-y-1">
+                <label className="text-slate-505 text-slate-500 block mb-1 font-bold">
+                  {lang === 'ar' ? 'تعيين الفروع التابعة (يمكن اختيار متعدد)' : 'Dispatch Assigned Branches (Multi-select)'}
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 custom-scrollbar">
+                  {branches.map(br => {
+                    const isChecked = selectedBranchIds.includes(br.id);
+                    return (
+                      <label 
+                        key={br.id}
+                        className={`flex items-center space-x-2 space-x-reverse p-2 rounded-lg border cursor-pointer transition duration-150 text-xxs font-semibold ${
+                          isChecked 
+                            ? 'bg-emerald-50 border-emerald-250 border-emerald-200 text-emerald-700 font-bold' 
+                            : 'bg-white border-slate-200 text-slate-705 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedBranchIds(prev => prev.filter(id => id !== br.id));
+                            } else {
+                              setSelectedBranchIds(prev => [...prev, br.id]);
+                            }
+                          }}
+                          className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                        />
+                        <span className="truncate">{lang === 'ar' ? br.nameAr : br.name}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
