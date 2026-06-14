@@ -110,10 +110,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang,
   const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('fms_collapsed_sidebar_groups');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      'Sales & Receivables': true,
+      'Expenses & Treasury': true,
+      'Logistics & Inventory': true,
+      'Administration & HR': true,
+      'System Control': true
+    };
   });
 
   const toggleGroup = (groupTitle: string) => {
