@@ -70,6 +70,69 @@ export const PettyCashModule: React.FC<PettyCashModuleProps> = ({
   const [attachmentData, setAttachmentData] = useState('');
   const [fileName, setFileName] = useState('');
 
+  // Custom categories list that persists in localStorage
+  const KEY_CUSTOM_CATEGORIES = 'fms_petty_cash_custom_categories';
+  const DEFAULT_CATEGORIES = [
+    { id: 'Office Supplies', name: 'Office Supplies', nameAr: 'أدوات مكتبية وقرطاسية' },
+    { id: 'Refreshments', name: 'Refreshments', nameAr: 'ضيافة ومأكولات' },
+    { id: 'Travel', name: 'Travel', nameAr: 'أجور سفر وتنقيل' },
+    { id: 'Maintenance', name: 'Maintenance', nameAr: 'صيانة دورية خفيفة' },
+    { id: 'Utilities', name: 'Utilities', nameAr: 'خدمات وفواتير حكومية' },
+    { id: 'Miscellaneous', name: 'Miscellaneous', nameAr: 'مصاريف نثرية أخرى' }
+  ];
+  const [categories, setCategories] = useState<{ id: string; name: string; nameAr: string }[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_CATEGORIES;
+    const stored = localStorage.getItem(KEY_CUSTOM_CATEGORIES);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const combined = [...DEFAULT_CATEGORIES];
+        parsed.forEach((c: any) => {
+          if (!combined.some(item => item.id === c.id)) {
+            combined.push(c);
+          }
+        });
+        return combined;
+      } catch (e) {
+        return DEFAULT_CATEGORIES;
+      }
+    }
+    return DEFAULT_CATEGORIES;
+  });
+
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [categoryNameEn, setCategoryNameEn] = useState('');
+  const [categoryNameAr, setCategoryNameAr] = useState('');
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryNameEn.trim() || !categoryNameAr.trim()) return;
+    
+    const newId = categoryNameEn.trim();
+    if (categories.some(c => c.id.toLowerCase() === newId.toLowerCase())) {
+      alert(lang === 'ar' ? 'هذا التصنيف موجود بالفعل!' : 'This category already exists!');
+      return;
+    }
+
+    const newCat = {
+      id: newId,
+      name: newId,
+      nameAr: categoryNameAr.trim()
+    };
+
+    const updated = [...categories, newCat];
+    setCategories(updated);
+    if (typeof window !== 'undefined') {
+      const customOnes = updated.filter(c => !DEFAULT_CATEGORIES.some(d => d.id === c.id));
+      localStorage.setItem(KEY_CUSTOM_CATEGORIES, JSON.stringify(customOnes));
+    }
+
+    setNewCategory(newId);
+    setCategoryNameEn('');
+    setCategoryNameAr('');
+    setShowAddCategoryModal(false);
+  };
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -138,6 +201,10 @@ export const PettyCashModule: React.FC<PettyCashModuleProps> = ({
   };
 
   const getCategoryTranslation = (cat: string) => {
+    const matched = categories.find(c => c.id === cat || c.name === cat);
+    if (matched) {
+      return lang === 'ar' ? matched.nameAr : matched.name;
+    }
     const dict: Record<string, string> = {
       'Top-up': lang === 'ar' ? 'تغذية الصندوق' : 'Top-up',
       'Office Supplies': lang === 'ar' ? 'قرطاسية ومستلزمات مكتب' : 'Office Supplies',
@@ -848,18 +915,27 @@ export const PettyCashModule: React.FC<PettyCashModuleProps> = ({
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                   {lang === 'ar' ? 'التصنيف المحاسبي للنفقة:' : 'Safe Ledger Category:'}
                 </label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-hidden focus:ring-1 focus:ring-rose-500 cursor-pointer font-sans"
-                >
-                  <option value="Office Supplies">{lang === 'ar' ? 'أدوات مكتبية وقرطاسية' : 'Office Supplies'}</option>
-                  <option value="Refreshments">{lang === 'ar' ? 'ضيافة ومأكولات' : 'Refreshments'}</option>
-                  <option value="Travel">{lang === 'ar' ? 'أجور سفر وتنقيل' : 'Travel'}</option>
-                  <option value="Maintenance">{lang === 'ar' ? 'صيانة دورية خفيفة' : 'Maintenance'}</option>
-                  <option value="Utilities">{lang === 'ar' ? 'خدمات وفواتير حكومية' : 'Utilities'}</option>
-                  <option value="Miscellaneous">{lang === 'ar' ? 'مصاريف نثرية أخرى' : 'Miscellaneous'}</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-hidden focus:ring-1 focus:ring-rose-500 cursor-pointer font-sans"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {lang === 'ar' ? c.nameAr : c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCategoryModal(true)}
+                    title={lang === 'ar' ? 'إضافة تصنيف جديد' : 'Add New Category'}
+                    className="p-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl cursor-pointer transition active:scale-95 flex items-center justify-center shrink-0"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Description EN (Multi-line) */}
@@ -1166,6 +1242,81 @@ export const PettyCashModule: React.FC<PettyCashModuleProps> = ({
               </div>
             </div>
 
+    	  </div>
+        </div>
+      )}
+
+      {/* Add Custom Category Modal */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-xs flex items-center justify-center p-4 z-[60] overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-scale-in">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="text-start">
+                <h3 className="text-xs font-bold text-slate-800">
+                  {lang === 'ar' ? 'إضافة تصنيف مصروف نثرية جديد' : 'Add New Petty Cash Category'}
+                </h3>
+                <span className="text-[9px] text-slate-400">
+                  {lang === 'ar' ? 'إنشاء بند تصنيف لحسابات عهدة المصاريف' : 'Create category log item for drawer accounts'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCategoryModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategory} className="p-4 space-y-4 text-start text-xs">
+              {/* Category EN */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  {lang === 'ar' ? 'اسم التصنيف بالإنجليزية:' : 'Category Name (English):'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={categoryNameEn}
+                  onChange={(e) => setCategoryNameEn(e.target.value)}
+                  placeholder="e.g. Courier & Delivery"
+                  className="w-full text-xs bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2.5 px-3 outline-hidden focus:ring-1 focus:ring-rose-500 font-sans"
+                />
+              </div>
+
+              {/* Category AR */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  {lang === 'ar' ? 'اسم التصنيف بالعربية:' : 'Category Name (Arabic):'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={categoryNameAr}
+                  onChange={(e) => setCategoryNameAr(e.target.value)}
+                  placeholder="مثال: البريد السريع والتوصيل"
+                  className="w-full text-xs bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2.5 px-3 outline-hidden focus:ring-1 focus:ring-rose-500 font-sans"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 select-none">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition duration-150 cursor-pointer active:scale-95"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="py-2 px-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition duration-150 cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'حفظ التصنيف' : 'Save Category'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
