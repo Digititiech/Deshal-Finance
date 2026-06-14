@@ -16,6 +16,7 @@ import { AuthSim } from './components/AuthSim';
 import { AdjustmentsModule } from './components/AdjustmentsModule';
 import { InventoryModule } from './components/InventoryModule';
 import { PayablesModule } from './components/PayablesModule';
+import { PettyCashModule } from './components/PettyCashModule';
 
 export default function App() {
   const db = useDb();
@@ -134,6 +135,23 @@ export default function App() {
             systemSettings={db.systemSettings}
             quickActionTrigger={quickActionTrigger}
             clearQuickAction={clearQuickAction}
+          />
+        );
+      case 'PETTY_CASH':
+        return (
+          <PettyCashModule
+            vouchers={db.pettyCashVouchers}
+            filteredVouchers={db.filteredPettyCashVouchers}
+            branches={db.branches}
+            employees={db.employees}
+            addVoucher={db.addPettyCashVoucher}
+            approveVoucher={db.approvePettyCashVoucher}
+            rejectVoucher={db.rejectPettyCashVoucher}
+            deleteVoucher={db.deletePettyCashVoucher}
+            lang={db.language}
+            userRole={db.currentUser?.role}
+            currentUser={db.currentUser}
+            systemSettings={db.systemSettings}
           />
         );
       case 'ADJUSTMENTS':

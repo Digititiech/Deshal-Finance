@@ -251,3 +251,19 @@ export interface PayablePayment {
   notes?: string;
 }
 
+export interface PettyCashVoucher {
+  id: string;
+  voucherNumber: string;
+  branchId: string;
+  amount: number;
+  type: 'Disbursement' | 'Replenishment';
+  category: string;
+  date: string;
+  status: 'Approved' | 'Pending' | 'Rejected';
+  description?: string;
+  descriptionAr?: string;
+  requestedBy: string;
+  approvedBy?: string;
+  receiptUrl?: string;
+}
+

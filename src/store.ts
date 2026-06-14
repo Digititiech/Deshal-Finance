@@ -20,7 +20,8 @@ import {
   FinancialAdjustment,
   Vendor,
   Payable,
-  PayablePayment
+  PayablePayment,
+  PettyCashVoucher
 } from './types';
 
 // Storage keys
@@ -41,6 +42,9 @@ const KEY_ADJUSTMENTS = 'fms_adjustments';
 const KEY_VENDORS = 'fms_vendors';
 const KEY_PAYABLES = 'fms_payables';
 const KEY_PAYABLE_PAYMENTS = 'fms_payable_payments';
+const KEY_PETTY_CASH = 'fms_petty_cash';
+
+const INITIAL_PETTY_CASH: PettyCashVoucher[] = [];
 
 const INITIAL_VENDORS: Vendor[] = [
   { id: 'ven_001', name: 'Global Tech Distributors', nameAr: 'موزعو التكنولوجيا العالمية', code: 'GTD', contactEmail: 'orders@globaltech.com', phone: '+1-555-8930', address: '400 Enterprise Way, NY', addressAr: '٤٠٠ طريق الأعمال، نيويورك' },
@@ -380,6 +384,7 @@ export const useDb = () => {
   const [vendors, setVendors] = useState<Vendor[]>(() => getStored(KEY_VENDORS, INITIAL_VENDORS));
   const [payables, setPayables] = useState<Payable[]>(() => getStored(KEY_PAYABLES, INITIAL_PAYABLES));
   const [payablePayments, setPayablePayments] = useState<PayablePayment[]>(() => getStored(KEY_PAYABLE_PAYMENTS, INITIAL_PAYABLE_PAYMENTS));
+  const [pettyCashVouchers, setPettyCashVouchers] = useState<PettyCashVoucher[]>(() => getStored(KEY_PETTY_CASH, INITIAL_PETTY_CASH));
   const [systemSettings, setSystemSettings] = useState<SystemSettings>(() => {
     const stored = getStored(KEY_SETTINGS, INITIAL_SETTINGS);
     return { ...INITIAL_SETTINGS, ...stored };
@@ -407,6 +412,7 @@ export const useDb = () => {
     setVendors(INITIAL_VENDORS);
     setPayables(INITIAL_PAYABLES);
     setPayablePayments(INITIAL_PAYABLE_PAYMENTS);
+    setPettyCashVouchers(INITIAL_PETTY_CASH);
     setSystemSettings(INITIAL_SETTINGS);
   };
 
@@ -753,6 +759,26 @@ export const useDb = () => {
             notes: pr.notes || undefined
           })));
         }
+
+        // Load petty cash vouchers
+        const { data: pcvs } = await supabase.from('petty_cash_vouchers').select('*');
+        if (pcvs) {
+          setPettyCashVouchers(pcvs.map(p => ({
+            id: p.id,
+            voucherNumber: p.voucher_number,
+            branchId: p.branch_id || '',
+            amount: Number(p.amount),
+            type: p.type as any,
+            category: p.category,
+            date: p.date,
+            status: p.status as any,
+            description: p.description || undefined,
+            descriptionAr: p.description_ar || undefined,
+            requestedBy: p.requested_by || '',
+            approvedBy: p.approved_by || undefined,
+            receiptUrl: p.receipt_url || undefined
+          })));
+        }
       } catch (err) {
         console.error("Error loading data from Supabase:", err);
       }
@@ -784,6 +810,7 @@ export const useDb = () => {
   useEffect(() => { saveStored(KEY_VENDORS, vendors); }, [vendors]);
   useEffect(() => { saveStored(KEY_PAYABLES, payables); }, [payables]);
   useEffect(() => { saveStored(KEY_PAYABLE_PAYMENTS, payablePayments); }, [payablePayments]);
+  useEffect(() => { saveStored(KEY_PETTY_CASH, pettyCashVouchers); }, [pettyCashVouchers]);
   useEffect(() => { saveStored(KEY_SETTINGS, systemSettings); }, [systemSettings]);
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1332,6 +1359,67 @@ export const useDb = () => {
     await supabase.from('payable_payments').delete().eq('id', id);
   };
 
+  const addPettyCashVoucher = async (item: Omit<PettyCashVoucher, 'id' | 'status' | 'approvedBy'>) => {
+    const id = `pcv_${Date.now()}`;
+    const status = item.type === 'Replenishment' ? 'Approved' : 'Pending';
+    const approvedBy = item.type === 'Replenishment' ? (currentUser?.email || undefined) : undefined;
+    const newVoucher: PettyCashVoucher = {
+      ...item,
+      id,
+      status,
+      approvedBy
+    };
+    
+    setPettyCashVouchers(prev => [...prev, newVoucher]);
+
+    await supabase.from('petty_cash_vouchers').insert({
+      id,
+      voucher_number: item.voucherNumber,
+      branch_id: item.branchId,
+      amount: item.amount,
+      type: item.type,
+      category: item.category,
+      date: item.date,
+      status,
+      description: item.description,
+      description_ar: item.descriptionAr,
+      requested_by: item.requestedBy,
+      approved_by: approvedBy,
+      receipt_url: item.receiptUrl
+    });
+
+    return newVoucher;
+  };
+
+  const approvePettyCashVoucher = async (id: string, approvedByEmail: string) => {
+    setPettyCashVouchers(prev => prev.map(v => v.id === id 
+      ? { ...v, status: 'Approved', approvedBy: approvedByEmail } 
+      : v
+    ));
+
+    await supabase.from('petty_cash_vouchers').update({
+      status: 'Approved',
+      approved_by: approvedByEmail
+    }).eq('id', id);
+  };
+
+  const rejectPettyCashVoucher = async (id: string, approvedByEmail: string) => {
+    setPettyCashVouchers(prev => prev.map(v => v.id === id 
+      ? { ...v, status: 'Rejected', approvedBy: approvedByEmail } 
+      : v
+    ));
+
+    await supabase.from('petty_cash_vouchers').update({
+      status: 'Rejected',
+      approved_by: approvedByEmail
+    }).eq('id', id);
+  };
+
+  const deletePettyCashVoucher = async (id: string) => {
+    setPettyCashVouchers(prev => prev.filter(v => v.id !== id));
+    await supabase.from('petty_cash_vouchers').delete().eq('id', id);
+  };
+
   const addProduct = async (item: Omit<ProductItem, 'id'>) => {
     const id = `prod_${Date.now()}`;
     const newP: ProductItem = { ...item, id };
@@ -1557,6 +1645,7 @@ export const useDb = () => {
   const filterMovementByBranch = (items: InventoryMovement[]): InventoryMovement[] => filterByBranch(items);
   const filterPayableByBranch = (items: Payable[]): Payable[] => filterByBranch(items);
   const filterPayablePaymentByBranch = (items: PayablePayment[]): PayablePayment[] => filterByBranch(items);
+  const filterPettyCashByBranch = (items: PettyCashVoucher[]): PettyCashVoucher[] => filterByBranch(items);
 
   const filteredIncome = filterIncomeByBranch(income);
   const filteredExpenses = filterExpenseByBranch(expenses);
@@ -1566,6 +1655,7 @@ export const useDb = () => {
   const filteredMovements = filterMovementByBranch(movements);
   const filteredPayables = filterPayableByBranch(payables);
   const filteredPayablePayments = filterPayablePaymentByBranch(payablePayments);
+  const filteredPettyCashVouchers = filterPettyCashByBranch(pettyCashVouchers);
 
   const filteredEmployees = (() => {
     if (currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin' || currentUser?.role === 'Accountant') {
@@ -1715,6 +1805,12 @@ export const useDb = () => {
     deletePayable,
     recordPayablePayment,
     deletePayablePayment,
+    pettyCashVouchers,
+    filteredPettyCashVouchers,
+    addPettyCashVoucher,
+    approvePettyCashVoucher,
+    rejectPettyCashVoucher,
+    deletePettyCashVoucher,
     totalIncome: totalIncomeVal,
     totalExpenses: totalExpensesVal,
     netProfit: netProfitVal,
