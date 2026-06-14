@@ -59,6 +59,7 @@ export interface Expense {
   fileName?: string;
   description?: string;
   descriptionAr?: string;
+  payableId?: string;
 }
 
 export interface InvoiceItem {

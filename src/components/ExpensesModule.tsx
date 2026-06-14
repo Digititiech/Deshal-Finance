@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Expense, ExpenseCategory, ExpenseStatus, Branch, UserRole, Customer, SystemSettings } from '../types';
+import { Expense, ExpenseCategory, ExpenseStatus, Branch, UserRole, Customer, SystemSettings, Payable, Vendor } from '../types';
 import { 
   Download, 
   PlusCircle, 
@@ -19,6 +19,9 @@ import {
 interface ExpensesModuleProps {
   expenses: Expense[];
   filteredExpenses: Expense[];
+  payables: Payable[];
+  filteredPayables: Payable[];
+  vendors: Vendor[];
   branches: Branch[];
   customers: Customer[];
   addExpense: (item: Omit<Expense, 'id'>) => Expense;
@@ -34,6 +37,9 @@ interface ExpensesModuleProps {
 export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   expenses,
   filteredExpenses,
+  payables,
+  filteredPayables,
+  vendors,
   branches,
   customers,
   addExpense,
@@ -73,6 +79,36 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   // Base64 upload file storage
   const [fileName, setFileName] = useState('');
   const [attachmentData, setAttachmentData] = useState('');
+  const [selectedPayableId, setSelectedPayableId] = useState<string>('');
+
+  const handlePayableChange = (payId: string) => {
+    setSelectedPayableId(payId);
+    if (payId) {
+      const payable = payables.find(p => p.id === payId);
+      if (payable) {
+        const outstanding = payable.totalAmount - payable.paidAmount;
+        setNewAmount(outstanding.toString());
+        
+        // Find vendor details
+        const vend = vendors.find(v => v.id === payable.vendorId);
+        if (vend) {
+          setNewEntity(vend.name);
+          setNewEntityAr(vend.nameAr);
+          setSelectedCustomerId(vend.id);
+          setSaveNewCustomer(false);
+        }
+        if (payable.branchId) {
+          setNewBranch(payable.branchId);
+        }
+      }
+    } else {
+      setNewAmount('');
+      setNewEntity('');
+      setNewEntityAr('');
+      setSelectedCustomerId('custom');
+      setSaveNewCustomer(true);
+    }
+  };
 
   useEffect(() => {
     if (quickActionTrigger === 'RECORD_EXPENSE') {
@@ -126,7 +162,8 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
       attachmentUrl: attachmentData || undefined,
       fileName: fileName || undefined,
       description: newDesc,
-      descriptionAr: newDescAr || newDesc
+      descriptionAr: newDescAr || newDesc,
+      payableId: selectedPayableId || undefined
     });
 
     // Reset fields
@@ -140,6 +177,7 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
     setNewDescAr('');
     setFileName('');
     setAttachmentData('');
+    setSelectedPayableId('');
     setShowAddModal(false);
   };
 
@@ -487,6 +525,35 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs text-start">
+              {/* Optional: Associate with Vendor Invoice (Payable) */}
+              <div>
+                <label className="text-slate-500 block mb-1 font-bold">
+                  {lang === 'ar' ? 'ربط بفاتورة مورد / حساب دائن (اختياري)' : 'Link to Vendor Invoice / Payable (Optional)'}
+                </label>
+                <select
+                  value={selectedPayableId}
+                  onChange={(e) => handlePayableChange(e.target.value)}
+                  className="w-full bg-white border border-slate-200 focus:border-rose-500 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm font-bold"
+                >
+                  <option value="">{lang === 'ar' ? '--- اختر فاتورة مورد لربط الدفعة بها ---' : '--- Select Vendor Invoice to Link Payout ---'}</option>
+                  {payables
+                    .filter(p => p.status !== 'Paid')
+                    .map(pay => {
+                      const vend = vendors.find(v => v.id === pay.vendorId);
+                      const vendName = vend ? (lang === 'ar' ? vend.nameAr : vend.name) : '-';
+                      const outstanding = pay.totalAmount - pay.paidAmount;
+                      const formattedOut = (systemSettings.primaryCurrency === 'SAR' || systemSettings.primaryCurrency === 'OMR') && lang === 'ar'
+                        ? `${outstanding.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${systemSettings.primaryCurrency || 'OMR'}`
+                        : `${systemSettings.primaryCurrency || 'OMR'} ${outstanding.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                      return (
+                        <option key={pay.id} value={pay.id}>
+                          {pay.payableNumber} - {vendName} ({lang === 'ar' ? `المتبقي: ${formattedOut}` : `Bal: ${formattedOut}`})
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
+
               {/* Customer / Beneficiary Dropdown Selection */}
               <div>
                 <label className="text-slate-500 block mb-1 font-bold">

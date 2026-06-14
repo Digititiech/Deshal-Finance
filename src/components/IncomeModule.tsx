@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Income, PaymentMethod, Branch, UserRole, Customer, SystemSettings } from '../types';
+import { Income, PaymentMethod, Branch, UserRole, Customer, SystemSettings, Invoice } from '../types';
 import { 
   Download, 
   PlusCircle, 
@@ -15,6 +15,8 @@ import {
 interface IncomeModuleProps {
   income: Income[];
   filteredIncome: Income[];
+  invoices: Invoice[];
+  filteredInvoices: Invoice[];
   branches: Branch[];
   customers: Customer[];
   addIncome: (item: Omit<Income, 'id'>) => Income;
@@ -30,6 +32,8 @@ interface IncomeModuleProps {
 export const IncomeModule: React.FC<IncomeModuleProps> = ({
   income,
   filteredIncome,
+  invoices,
+  filteredInvoices,
   branches,
   customers,
   addIncome,
@@ -64,6 +68,36 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
   const [newMethod, setNewMethod] = useState<PaymentMethod>('Bank Transfer');
   const [newDesc, setNewDesc] = useState('');
   const [newDescAr, setNewDescAr] = useState('');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
+
+  const handleInvoiceChange = (invId: string) => {
+    setSelectedInvoiceId(invId);
+    if (invId) {
+      const inv = invoices.find(i => i.id === invId);
+      if (inv) {
+        const outstanding = inv.totalAmount - inv.paidAmount;
+        setNewAmount(outstanding.toString());
+        
+        // Find matching customer
+        const cust = customers.find(c => c.id === inv.customerId);
+        if (cust) {
+          setNewSource(cust.name);
+          setNewSourceAr(cust.nameAr);
+          setSelectedCustomerId(cust.id);
+          setSaveNewCustomer(false); // Customer exists
+        }
+        if (inv.branchId) {
+          setNewBranch(inv.branchId);
+        }
+      }
+    } else {
+      setNewAmount('');
+      setNewSource('');
+      setNewSourceAr('');
+      setSelectedCustomerId('custom');
+      setSaveNewCustomer(true);
+    }
+  };
 
   useEffect(() => {
     if (quickActionTrigger === 'RECORD_INCOME') {
@@ -97,7 +131,8 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
       branchId: newBranch,
       paymentMethod: newMethod,
       description: newDesc,
-      descriptionAr: newDescAr || newDesc
+      descriptionAr: newDescAr || newDesc,
+      invoiceId: selectedInvoiceId || undefined
     });
 
     // Reset fields
@@ -109,6 +144,7 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
     setNewDate(new Date().toISOString().split('T')[0]);
     setNewDesc('');
     setNewDescAr('');
+    setSelectedInvoiceId('');
     setShowAddModal(false);
   };
 
@@ -394,6 +430,35 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs text-start">
+              {/* Optional: Associate with Sales Invoice */}
+              <div>
+                <label className="text-slate-500 block mb-1 font-bold">
+                  {lang === 'ar' ? 'ربط بفاتورة مبيعات (اختياري)' : 'Link to Sales Invoice (Optional)'}
+                </label>
+                <select
+                  value={selectedInvoiceId}
+                  onChange={(e) => handleInvoiceChange(e.target.value)}
+                  className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-800 rounded-xl p-2.5 outline-none shadow-sm font-bold"
+                >
+                  <option value="">{lang === 'ar' ? '--- اختر فاتورة لربط الدفعة بها ---' : '--- Select Invoice to Link Inflow ---'}</option>
+                  {invoices
+                    .filter(i => i.status !== 'Paid')
+                    .map(inv => {
+                      const cust = customers.find(c => c.id === inv.customerId);
+                      const custName = cust ? (lang === 'ar' ? cust.nameAr : cust.name) : '-';
+                      const outstanding = inv.totalAmount - inv.paidAmount;
+                      const formattedOut = (systemSettings.primaryCurrency === 'SAR' || systemSettings.primaryCurrency === 'OMR') && lang === 'ar'
+                        ? `${outstanding.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${systemSettings.primaryCurrency || 'OMR'}`
+                        : `${systemSettings.primaryCurrency || 'OMR'} ${outstanding.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                      return (
+                        <option key={inv.id} value={inv.id}>
+                          {inv.invoiceNumber} - {custName} ({lang === 'ar' ? `المتبقي: ${formattedOut}` : `Bal: ${formattedOut}`})
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
+
               {/* Customer / Source Dropdown Selection */}
               <div>
                 <label className="text-slate-500 block mb-1 font-bold">

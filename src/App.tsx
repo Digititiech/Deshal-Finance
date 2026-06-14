@@ -55,6 +55,8 @@ export default function App() {
           <IncomeModule
             income={db.income}
             filteredIncome={db.filteredIncome}
+            invoices={db.invoices}
+            filteredInvoices={db.filteredInvoices}
             branches={db.branches}
             customers={db.customers}
             addIncome={db.addIncome}
@@ -72,6 +74,9 @@ export default function App() {
           <ExpensesModule
             expenses={db.expenses}
             filteredExpenses={db.filteredExpenses}
+            payables={db.payables}
+            filteredPayables={db.filteredPayables}
+            vendors={db.vendors}
             branches={db.branches}
             customers={db.customers}
             addExpense={db.addExpense}

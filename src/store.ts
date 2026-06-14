@@ -571,7 +571,8 @@ export const useDb = () => {
             attachmentUrl: e.attachment_url || undefined,
             fileName: e.file_name || undefined,
             description: e.description || undefined,
-            descriptionAr: e.description_ar || undefined
+            descriptionAr: e.description_ar || undefined,
+            payableId: e.payable_id || undefined
           })));
         }
 
@@ -901,6 +902,35 @@ export const useDb = () => {
   const addIncome = async (item: Omit<Income, 'id'>) => {
     const id = `inc_${Date.now()}`;
     const newInc: Income = { ...item, id };
+
+    // Auto-update linked invoice balance if invoiceId exists
+    if (item.invoiceId) {
+      setInvoices(prev => prev.map(inv => {
+        if (inv.id === item.invoiceId) {
+          const potentialPaid = inv.paidAmount + item.amount;
+          const newPaid = Math.min(potentialPaid, inv.totalAmount);
+          let newStatus: InvoiceStatus = 'Partial';
+          if (newPaid >= inv.totalAmount) {
+            newStatus = 'Paid';
+          } else if (newPaid === 0) {
+            newStatus = 'Unpaid';
+          }
+
+          supabase.from('invoices').update({
+            paid_amount: newPaid,
+            status: newStatus
+          }).eq('id', inv.id).then();
+
+          return {
+            ...inv,
+            paidAmount: newPaid,
+            status: newStatus
+          };
+        }
+        return inv;
+      }));
+    }
+
     setIncome(prev => [newInc, ...prev]);
 
     await supabase.from('income').insert({
@@ -920,6 +950,34 @@ export const useDb = () => {
   };
 
   const deleteIncome = async (id: string) => {
+    const inc = income.find(i => i.id === id);
+    if (inc && inc.invoiceId) {
+      // Refund linked invoice balance
+      setInvoices(prev => prev.map(inv => {
+        if (inv.id === inc.invoiceId) {
+          const newPaid = Math.max(0, inv.paidAmount - inc.amount);
+          let newStatus: InvoiceStatus = 'Partial';
+          if (newPaid === 0) {
+            newStatus = 'Unpaid';
+          } else if (newPaid >= inv.totalAmount) {
+            newStatus = 'Paid';
+          }
+
+          supabase.from('invoices').update({
+            paid_amount: newPaid,
+            status: newStatus
+          }).eq('id', inv.id).then();
+
+          return {
+            ...inv,
+            paidAmount: newPaid,
+            status: newStatus
+          };
+        }
+        return inv;
+      }));
+    }
+
     setIncome(prev => prev.filter(i => i.id !== id));
     await supabase.from('income').delete().eq('id', id);
   };
@@ -927,6 +985,35 @@ export const useDb = () => {
   const addExpense = async (item: Omit<Expense, 'id'>) => {
     const id = `exp_${Date.now()}`;
     const newExp: Expense = { ...item, id };
+
+    // Auto-update linked payable balance if payableId exists
+    if (item.payableId) {
+      setPayables(prev => prev.map(p => {
+        if (p.id === item.payableId) {
+          const potentialPaid = p.paidAmount + item.amount;
+          const newPaid = Math.min(potentialPaid, p.totalAmount);
+          let newStatus: InvoiceStatus = 'Partial';
+          if (newPaid >= p.totalAmount) {
+            newStatus = 'Paid';
+          } else if (newPaid === 0) {
+            newStatus = 'Unpaid';
+          }
+
+          supabase.from('payables').update({
+            paid_amount: newPaid,
+            status: newStatus
+          }).eq('id', p.id).then();
+
+          return {
+            ...p,
+            paidAmount: newPaid,
+            status: newStatus
+          };
+        }
+        return p;
+      }));
+    }
+
     setExpenses(prev => [newExp, ...prev]);
 
     await supabase.from('expenses').insert({
@@ -941,13 +1028,42 @@ export const useDb = () => {
       attachment_url: item.attachmentUrl || null,
       file_name: item.fileName || null,
       description: item.description || null,
-      description_ar: item.descriptionAr || null
+      description_ar: item.descriptionAr || null,
+      payable_id: item.payableId || null
     });
 
     return newExp;
   };
 
   const deleteExpense = async (id: string) => {
+    const exp = expenses.find(e => e.id === id);
+    if (exp && exp.payableId) {
+      // Refund linked payable balance
+      setPayables(prev => prev.map(p => {
+        if (p.id === exp.payableId) {
+          const newPaid = Math.max(0, p.paidAmount - exp.amount);
+          let newStatus: InvoiceStatus = 'Partial';
+          if (newPaid === 0) {
+            newStatus = 'Unpaid';
+          } else if (newPaid >= p.totalAmount) {
+            newStatus = 'Paid';
+          }
+
+          supabase.from('payables').update({
+            paid_amount: newPaid,
+            status: newStatus
+          }).eq('id', p.id).then();
+
+          return {
+            ...p,
+            paidAmount: newPaid,
+            status: newStatus
+          };
+        }
+        return p;
+      }));
+    }
+
     setExpenses(prev => prev.filter(e => e.id !== id));
     await supabase.from('expenses').delete().eq('id', id);
   };
