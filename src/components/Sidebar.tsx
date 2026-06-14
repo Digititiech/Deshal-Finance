@@ -16,7 +16,10 @@ import {
   Scale,
   Package,
   Coins,
-  Wallet
+  Wallet,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 
 export type TabId = 'DASHBOARD' | 'INCOME' | 'EXPENSES' | 'INVOICES' | 'RECEIPTS' | 'PAYABLES' | 'PETTY_CASH' | 'ADJUSTMENTS' | 'INVENTORY' | 'CUSTOMERS' | 'BRANCHES' | 'EMPLOYEES' | 'REPORTS' | 'SETTINGS';
@@ -104,6 +107,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang,
     return itemMinRole.includes(userRole);
   };
 
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('fms_collapsed_sidebar_groups');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleGroup = (groupTitle: string) => {
+    setCollapsedGroups(prev => {
+      const next = { ...prev, [groupTitle]: !prev[groupTitle] };
+      try {
+        localStorage.setItem('fms_collapsed_sidebar_groups', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
   return (
     <aside className="w-64 max-w-xs shrink-0 bg-white border-r border-slate-200 flex flex-col h-full z-20 transition-all duration-300">
       {/* Brand area */}
@@ -140,37 +164,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang,
           const allowedItems = group.items.filter(item => hasAccess(item.minRole));
           if (allowedItems.length === 0) return null;
 
+          const isCollapsed = collapsedGroups[group.title];
+
           return (
             <div key={groupIdx} className="space-y-1">
-              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-wider uppercase select-none mb-1 text-start">
-                {lang === 'ar' ? group.titleAr : group.title}
-              </h3>
-              <div className="space-y-1">
-                {allowedItems.map((item) => {
-                  const isSelected = activeTab === item.id;
-                  const IconComponent = item.icon;
+              <button
+                onClick={() => toggleGroup(group.title)}
+                className="w-full px-3 py-1.5 text-[10px] font-black text-slate-400 hover:text-slate-600 hover:bg-slate-50/50 rounded-lg transition-all tracking-wider uppercase select-none mb-1 flex items-center justify-between cursor-pointer focus:outline-none"
+              >
+                <span>{lang === 'ar' ? group.titleAr : group.title}</span>
+                {isCollapsed ? (
+                  lang === 'ar' ? (
+                    <ChevronLeft className="w-3.5 h-3.5 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  )
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+              
+              {!isCollapsed && (
+                <div className="space-y-1">
+                  {allowedItems.map((item) => {
+                    const isSelected = activeTab === item.id;
+                    const IconComponent = item.icon;
 
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-xl transition duration-150 relative font-sans cursor-pointer ${
-                        isSelected 
-                          ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100' 
-                          : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                      }`}
-                    >
-                      <IconComponent className={`w-4 h-4 shrink-0 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
-                      <span className="text-xs text-start">
-                        {lang === 'ar' ? item.labelAr : item.label}
-                      </span>
-                      {isSelected && (
-                        <div className={`absolute w-1.5 h-5 rounded-md bg-emerald-600 top-1/2 -translate-y-1/2 ${lang === 'ar' ? 'left-2' : 'right-2'}`}></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-xl transition duration-150 relative font-sans cursor-pointer ${
+                          isSelected 
+                            ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100' 
+                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                        }`}
+                      >
+                        <IconComponent className={`w-4 h-4 shrink-0 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        <span className="text-xs text-start">
+                          {lang === 'ar' ? item.labelAr : item.label}
+                        </span>
+                        {isSelected && (
+                          <div className={`absolute w-1.5 h-5 rounded-md bg-emerald-600 top-1/2 -translate-y-1/2 ${lang === 'ar' ? 'left-2' : 'right-2'}`}></div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
