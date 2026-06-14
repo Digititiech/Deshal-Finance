@@ -30,21 +30,71 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang, userRole, logout }) => {
-  const navItems: { id: TabId; label: string; labelAr: string; icon: React.ComponentType<{ className?: string }>; minRole?: UserRole[] }[] = [
-    { id: 'DASHBOARD', label: 'Dashboard', labelAr: 'لوحة القيادة', icon: LayoutDashboard },
-    { id: 'INCOME', label: 'Income', labelAr: 'الإيرادات', icon: TrendingUp },
-    { id: 'EXPENSES', label: 'Expenses', labelAr: 'المصروفات', icon: TrendingDown },
-    { id: 'INVOICES', label: 'Invoices', labelAr: 'الفواتير', icon: ReceiptText },
-    { id: 'RECEIPTS', label: 'Receipts', labelAr: 'سندات القبض', icon: CreditCard },
-    { id: 'PAYABLES', label: 'Accounts Payable', labelAr: 'الحسابات الدائنة', icon: Coins },
-    { id: 'PETTY_CASH', label: 'Petty Cash Safe', labelAr: 'الخزينة النثرية', icon: Wallet },
-    { id: 'ADJUSTMENTS', label: 'Adjustments (CN/DN)', labelAr: 'التسويات والخصومات', icon: Scale },
-    { id: 'INVENTORY', label: 'Products & Stock', labelAr: 'المنتجات والمخزون', icon: Package },
-    { id: 'CUSTOMERS', label: 'Customers', labelAr: 'العملاء', icon: Users },
-    { id: 'BRANCHES', label: 'Branches', labelAr: 'الفروع', icon: Store },
-    { id: 'EMPLOYEES', label: 'Employees', labelAr: 'الموظفين', icon: UserCheck },
-    { id: 'REPORTS', label: 'Reports', labelAr: 'التقارير المالية', icon: BarChart3 },
-    { id: 'SETTINGS', label: 'Portal Settings', labelAr: 'الإعدادات', icon: Settings, minRole: ['Super Admin', 'Admin', 'Manager'] }
+  interface NavItem {
+    id: TabId;
+    label: string;
+    labelAr: string;
+    icon: React.ComponentType<{ className?: string }>;
+    minRole?: UserRole[];
+  }
+
+  interface NavGroup {
+    title: string;
+    titleAr: string;
+    items: NavItem[];
+  }
+
+  const navGroups: NavGroup[] = [
+    {
+      title: 'Overview & Analysis',
+      titleAr: 'التحليلات والنظرة العامة',
+      items: [
+        { id: 'DASHBOARD', label: 'Dashboard', labelAr: 'لوحة القيادة', icon: LayoutDashboard },
+        { id: 'REPORTS', label: 'Reports', labelAr: 'التقارير المالية', icon: BarChart3 }
+      ]
+    },
+    {
+      title: 'Sales & Receivables',
+      titleAr: 'المبيعات والمقبوضات',
+      items: [
+        { id: 'INVOICES', label: 'Invoices', labelAr: 'الفواتير', icon: ReceiptText },
+        { id: 'RECEIPTS', label: 'Receipts', labelAr: 'سندات القبض', icon: CreditCard },
+        { id: 'INCOME', label: 'Income', labelAr: 'الإيرادات', icon: TrendingUp },
+        { id: 'CUSTOMERS', label: 'Customers', labelAr: 'العملاء', icon: Users }
+      ]
+    },
+    {
+      title: 'Expenses & Treasury',
+      titleAr: 'المصروفات والخزينة',
+      items: [
+        { id: 'EXPENSES', label: 'Expenses', labelAr: 'المصروفات', icon: TrendingDown },
+        { id: 'PAYABLES', label: 'Accounts Payable', labelAr: 'الحسابات الدائنة', icon: Coins },
+        { id: 'PETTY_CASH', label: 'Petty Cash Safe', labelAr: 'الخزينة النثرية', icon: Wallet },
+        { id: 'ADJUSTMENTS', label: 'Adjustments (CN/DN)', labelAr: 'التسويات والخصومات', icon: Scale }
+      ]
+    },
+    {
+      title: 'Logistics & Inventory',
+      titleAr: 'اللوجستيات والمخزون',
+      items: [
+        { id: 'INVENTORY', label: 'Products & Stock', labelAr: 'المنتجات والمخزون', icon: Package }
+      ]
+    },
+    {
+      title: 'Administration & HR',
+      titleAr: 'الإدارة والموارد البشرية',
+      items: [
+        { id: 'BRANCHES', label: 'Branches', labelAr: 'الفروع', icon: Store },
+        { id: 'EMPLOYEES', label: 'Employees', labelAr: 'الموظفين', icon: UserCheck }
+      ]
+    },
+    {
+      title: 'System Control',
+      titleAr: 'إدارة النظام',
+      items: [
+        { id: 'SETTINGS', label: 'Portal Settings', labelAr: 'الإعدادات', icon: Settings, minRole: ['Super Admin', 'Admin', 'Manager'] }
+      ]
+    }
   ];
 
   // Helper to check user privileges
@@ -85,32 +135,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang,
       </div>
 
       {/* Navigation options */}
-      <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
-        {navItems.map((item) => {
-          const isSelected = activeTab === item.id;
-          const allowed = hasAccess(item.minRole);
-          const IconComponent = item.icon;
-          
-          if (!allowed) return null;
+      <nav className="flex-1 px-4 py-2 space-y-4 overflow-y-auto custom-scrollbar">
+        {navGroups.map((group, groupIdx) => {
+          const allowedItems = group.items.filter(item => hasAccess(item.minRole));
+          if (allowedItems.length === 0) return null;
 
           return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-3 rounded-xl transition duration-150 relative font-sans cursor-pointer ${
-                isSelected 
-                  ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100' 
-                  : 'text-slate-505 text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-              }`}
-            >
-              <IconComponent className={`w-5 h-5 shrink-0 ${isSelected ? 'text-emerald-605 text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-xs text-start">
-                {lang === 'ar' ? item.labelAr : item.label}
-              </span>
-              {isSelected && (
-                <div className={`absolute w-1.5 h-6 rounded-md bg-emerald-600 top-1/2 -translate-y-1/2 ${lang === 'ar' ? 'left-2' : 'right-2'}`}></div>
-              )}
-            </button>
+            <div key={groupIdx} className="space-y-1">
+              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-wider uppercase select-none mb-1 text-start">
+                {lang === 'ar' ? group.titleAr : group.title}
+              </h3>
+              <div className="space-y-1">
+                {allowedItems.map((item) => {
+                  const isSelected = activeTab === item.id;
+                  const IconComponent = item.icon;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center space-x-3 space-x-reverse px-4 py-2 rounded-xl transition duration-150 relative font-sans cursor-pointer ${
+                        isSelected 
+                          ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100' 
+                          : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                      }`}
+                    >
+                      <IconComponent className={`w-4 h-4 shrink-0 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <span className="text-xs text-start">
+                        {lang === 'ar' ? item.labelAr : item.label}
+                      </span>
+                      {isSelected && (
+                        <div className={`absolute w-1.5 h-5 rounded-md bg-emerald-600 top-1/2 -translate-y-1/2 ${lang === 'ar' ? 'left-2' : 'right-2'}`}></div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
