@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemSettings, UserRole } from '../types';
 import { 
   ShieldCheck, 
@@ -84,55 +84,101 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   const [notif, setNotif] = useState('');
 
+  useEffect(() => {
+    setCompanyName(systemSettings.companyName || '');
+    setCompanyNameAr(systemSettings.companyNameAr || '');
+    setRegistrationNo(systemSettings.registrationNo || '');
+    setLogoUrl(systemSettings.logoUrl || '');
+    setPrimaryCurrency(systemSettings.primaryCurrency || 'OMR');
+    setDateFormat(systemSettings.dateFormat || 'YYYY-MM-DD');
+    setThemePrimaryColor(systemSettings.themePrimaryColor || 'emerald');
+    setAllowThemeToggle(systemSettings.allowThemeToggle !== false);
+    setCompanyAddress(systemSettings.companyAddress || '');
+    setCompanyAddressAr(systemSettings.companyAddressAr || '');
+    setCompanyPhone(systemSettings.companyPhone || '');
+    setCompanyEmail(systemSettings.companyEmail || '');
+    setVatCompliance(systemSettings.vatCompliance !== false);
+    setVatRatePct(systemSettings.vatRatePct ?? 15);
+    setInvoicePrefix(systemSettings.invoicePrefix || 'INV');
+    setReceiptPrefix(systemSettings.receiptPrefix || 'REC');
+    setDefaultDueDays(systemSettings.defaultDueDays ?? 30);
+    setInvoiceFooterTerms(systemSettings.invoiceFooterTerms || '');
+    setInvoiceFooterTermsAr(systemSettings.invoiceFooterTermsAr || '');
+    setReceiptFooterTerms(systemSettings.receiptFooterTerms || '');
+    setReceiptFooterTermsAr(systemSettings.receiptFooterTermsAr || '');
+    setCompanySealUrl(systemSettings.companySealUrl || '');
+    setCompanySealName(systemSettings.companySealName || '');
+    setCompanySealNameAr(systemSettings.companySealNameAr || '');
+    setAuthorizedSignatureUrl(systemSettings.authorizedSignatureUrl || '');
+    setAuthorizedSignatureName(systemSettings.authorizedSignatureName || '');
+    setAuthorizedSignatureNameAr(systemSettings.authorizedSignatureNameAr || '');
+    setShowSealOnInvoices(systemSettings.showSealOnInvoices !== false);
+    setShowSignatureOnInvoices(systemSettings.showSignatureOnInvoices !== false);
+    setDefaultStaffSalary(systemSettings.defaultStaffSalary ?? 3000);
+    setAllowStaffSelfEdit(!!systemSettings.allowStaffSelfEdit);
+    setRestrictInvoiceDeletion(systemSettings.restrictInvoiceDeletion !== false);
+    setEnforceSalaryApproval(systemSettings.enforceSalaryApproval !== false);
+    setDefaultBranchId(systemSettings.defaultBranchId || 'riyadh_hq');
+    setEnableBranchIsolation(systemSettings.enableBranchIsolation !== false);
+    setMaxBranchesAllowed(systemSettings.maxBranchesAllowed ?? 10);
+    setRealTimeNotifications(!!systemSettings.realTimeNotifications);
+    setTwoFactorAuth(!!systemSettings.twoFactorAuth);
+  }, [systemSettings]);
+
   const isEditable = userRole === 'Super Admin' || userRole === 'Admin';
 
-  const handleApplySettings = (e: React.FormEvent) => {
+  const handleApplySettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isEditable) return;
 
-    setSystemSettings({
-      companyName,
-      companyNameAr,
-      registrationNo,
-      logoUrl,
-      primaryCurrency,
-      dateFormat,
-      themePrimaryColor,
-      allowThemeToggle,
-      companyAddress,
-      companyAddressAr,
-      companyPhone,
-      companyEmail,
-      vatCompliance,
-      vatRatePct,
-      invoicePrefix,
-      receiptPrefix,
-      defaultDueDays,
-      invoiceFooterTerms,
-      invoiceFooterTermsAr,
-      receiptFooterTerms,
-      receiptFooterTermsAr,
-      companySealUrl,
-      companySealName,
-      companySealNameAr,
-      authorizedSignatureUrl,
-      authorizedSignatureName,
-      authorizedSignatureNameAr,
-      showSealOnInvoices,
-      showSignatureOnInvoices,
-      defaultStaffSalary,
-      allowStaffSelfEdit,
-      restrictInvoiceDeletion,
-      enforceSalaryApproval,
-      defaultBranchId,
-      enableBranchIsolation,
-      maxBranchesAllowed,
-      realTimeNotifications,
-      twoFactorAuth
-    });
+    try {
+      await setSystemSettings({
+        companyName,
+        companyNameAr,
+        registrationNo,
+        logoUrl,
+        primaryCurrency,
+        dateFormat,
+        themePrimaryColor,
+        allowThemeToggle,
+        companyAddress,
+        companyAddressAr,
+        companyPhone,
+        companyEmail,
+        vatCompliance,
+        vatRatePct,
+        invoicePrefix,
+        receiptPrefix,
+        defaultDueDays,
+        invoiceFooterTerms,
+        invoiceFooterTermsAr,
+        receiptFooterTerms,
+        receiptFooterTermsAr,
+        companySealUrl,
+        companySealName,
+        companySealNameAr,
+        authorizedSignatureUrl,
+        authorizedSignatureName,
+        authorizedSignatureNameAr,
+        showSealOnInvoices,
+        showSignatureOnInvoices,
+        defaultStaffSalary,
+        allowStaffSelfEdit,
+        restrictInvoiceDeletion,
+        enforceSalaryApproval,
+        defaultBranchId,
+        enableBranchIsolation,
+        maxBranchesAllowed,
+        realTimeNotifications,
+        twoFactorAuth
+      });
 
-    setNotif(lang === 'ar' ? 'تم حفظ كافة الإعدادات المتقدمة بنجاح!' : 'All advanced configurations applied successfully!');
-    setTimeout(() => setNotif(''), 3000);
+      setNotif(lang === 'ar' ? 'تم حفظ كافة الإعدادات المتقدمة بنجاح!' : 'All advanced configurations applied successfully!');
+    } catch (err: any) {
+      console.error(err);
+      setNotif(lang === 'ar' ? 'فشل حفظ الإعدادات في قاعدة البيانات: ' + (err.message || 'خطأ غير معروف') : 'Failed to save settings to database: ' + (err.message || 'Unknown error'));
+    }
+    setTimeout(() => setNotif(''), 5000);
   };
 
   const menuTabs: { id: TabType; label: string; labelAr: string; icon: React.ComponentType<{ className?: string }> }[] = [

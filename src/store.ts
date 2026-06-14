@@ -685,10 +685,10 @@ export const useDb = () => {
             companyPhone: sett.company_phone || '',
             companyEmail: sett.company_email || '',
             vatCompliance: sett.vat_compliance,
-            vatRatePct: Number(sett.vat_rate_pct) || 15,
+            vatRatePct: sett.vat_rate_pct !== null && sett.vat_rate_pct !== undefined ? Number(sett.vat_rate_pct) : 15,
             invoicePrefix: sett.invoice_prefix || 'INV',
             receiptPrefix: sett.receipt_prefix || 'REC',
-            defaultDueDays: Number(sett.default_due_days) || 30,
+            defaultDueDays: sett.default_due_days !== null && sett.default_due_days !== undefined ? Number(sett.default_due_days) : 30,
             invoiceFooterTerms: sett.invoice_footer_terms || '',
             invoiceFooterTermsAr: sett.invoice_footer_terms_ar || '',
             receiptFooterTerms: sett.receipt_footer_terms || '',
@@ -701,13 +701,13 @@ export const useDb = () => {
             authorizedSignatureNameAr: sett.authorized_signature_name_ar || undefined,
             showSealOnInvoices: sett.show_seal_on_invoices,
             showSignatureOnInvoices: sett.show_signature_on_invoices,
-            defaultStaffSalary: Number(sett.default_staff_salary) || 3000,
+            defaultStaffSalary: sett.default_staff_salary !== null && sett.default_staff_salary !== undefined ? Number(sett.default_staff_salary) : 3000,
             allowStaffSelfEdit: sett.allow_staff_self_edit,
             restrictInvoiceDeletion: sett.restrict_invoice_deletion,
             enforceSalaryApproval: sett.enforce_salary_approval,
             defaultBranchId: sett.default_branch_id || 'riyadh_hq',
             enableBranchIsolation: sett.enable_branch_isolation,
-            maxBranchesAllowed: Number(sett.max_branches_allowed) || 10,
+            maxBranchesAllowed: sett.max_branches_allowed !== null && sett.max_branches_allowed !== undefined ? Number(sett.max_branches_allowed) : 10,
             realTimeNotifications: sett.real_time_notifications,
             twoFactorAuth: sett.two_factor_auth
           });
@@ -1691,7 +1691,7 @@ export const useDb = () => {
   const updateSystemSettings = async (settings: SystemSettings) => {
     setSystemSettings(settings);
     
-    await supabase.from('system_settings').update({
+    const { error } = await supabase.from('system_settings').update({
       company_name: settings.companyName,
       company_name_ar: settings.companyNameAr,
       registration_no: settings.registrationNo,
@@ -1731,6 +1731,11 @@ export const useDb = () => {
       real_time_notifications: settings.realTimeNotifications,
       two_factor_auth: settings.twoFactorAuth
     }).eq('id', 1);
+
+    if (error) {
+      console.error("Error updating system settings in Supabase:", error);
+      throw error;
+    }
   };
 
   // State filtering logic (Branch Isolation / RLS)
