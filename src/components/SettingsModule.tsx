@@ -1086,7 +1086,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'كلمة المرور للبريد' : 'SMTP Password'}</label>
+                      <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'كلمة مرور التطبيق (App Password)' : 'SMTP App Password'}</label>
                       <input
                         type="password"
                         disabled={!isEditable}
@@ -1095,6 +1095,9 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                         placeholder="••••••••••••••••"
                         className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none"
                       />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {lang === 'ar' ? 'يجب استخدام كلمة مرور التطبيقات (App Password) المخصصة من جهة البريد الإلكتروني وليس كلمة المرور الأساسية.' : 'You must use a dedicated App Password generated from your email provider instead of the primary account password.'}
+                      </p>
                     </div>
                   </div>
 
