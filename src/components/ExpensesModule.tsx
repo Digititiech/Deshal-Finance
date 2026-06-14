@@ -71,10 +71,72 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   const [newAmount, setNewAmount] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newBranch, setNewBranch] = useState(branches[0]?.id || '');
-  const [newCategory, setNewCategory] = useState<ExpenseCategory>('Utilities');
+  const [newCategory, setNewCategory] = useState<string>('Utilities');
   const [newStatus, setNewStatus] = useState<ExpenseStatus>('Approved');
   const [newDesc, setNewDesc] = useState('');
   const [newDescAr, setNewDescAr] = useState('');
+
+  // Custom categories list that persists in localStorage
+  const KEY_EXPENSE_CUSTOM_CATEGORIES = 'fms_expense_custom_categories';
+  const DEFAULT_EXPENSE_CATEGORIES = [
+    { id: 'Rent', name: 'Rent', nameAr: 'إيجار فروع' },
+    { id: 'Payroll', name: 'Payroll', nameAr: 'رواتب الموظفين' },
+    { id: 'Utilities', name: 'Utilities', nameAr: 'مرافق عامة' },
+    { id: 'Infrastructure', name: 'Infrastructure', nameAr: 'بنية تحتية' },
+    { id: 'Fees', name: 'Fees', nameAr: 'رسوم وعمولات' }
+  ];
+  const [categories, setCategories] = useState<{ id: string; name: string; nameAr: string }[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_EXPENSE_CATEGORIES;
+    const stored = localStorage.getItem(KEY_EXPENSE_CUSTOM_CATEGORIES);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const combined = [...DEFAULT_EXPENSE_CATEGORIES];
+        parsed.forEach((c: any) => {
+          if (!combined.some(item => item.id === c.id)) {
+            combined.push(c);
+          }
+        });
+        return combined;
+      } catch (e) {
+        return DEFAULT_EXPENSE_CATEGORIES;
+      }
+    }
+    return DEFAULT_EXPENSE_CATEGORIES;
+  });
+
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [categoryNameEn, setCategoryNameEn] = useState('');
+  const [categoryNameAr, setCategoryNameAr] = useState('');
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryNameEn.trim() || !categoryNameAr.trim()) return;
+    
+    const newId = categoryNameEn.trim();
+    if (categories.some(c => c.id.toLowerCase() === newId.toLowerCase())) {
+      alert(lang === 'ar' ? 'هذا التصنيف موجود بالفعل!' : 'This category already exists!');
+      return;
+    }
+
+    const newCat = {
+      id: newId,
+      name: newId,
+      nameAr: categoryNameAr.trim()
+    };
+
+    const updated = [...categories, newCat];
+    setCategories(updated);
+    if (typeof window !== 'undefined') {
+      const customOnes = updated.filter(c => !DEFAULT_EXPENSE_CATEGORIES.some(d => d.id === c.id));
+      localStorage.setItem(KEY_EXPENSE_CUSTOM_CATEGORIES, JSON.stringify(customOnes));
+    }
+
+    setNewCategory(newId);
+    setCategoryNameEn('');
+    setCategoryNameAr('');
+    setShowAddCategoryModal(false);
+  };
   
   // Base64 upload file storage
   const [fileName, setFileName] = useState('');
@@ -188,7 +250,11 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
   };
 
   // Convert English category names to beautiful Arabic tags
-  const getCategoryTranslation = (cat: ExpenseCategory) => {
+  const getCategoryTranslation = (cat: string) => {
+    const matched = categories.find(c => c.id === cat || c.name === cat);
+    if (matched) {
+      return lang === 'ar' ? matched.nameAr : matched.name;
+    }
     switch (cat) {
       case 'Rent': return lang === 'ar' ? 'إيجار فروع' : 'Rent';
       case 'Payroll': return lang === 'ar' ? 'رواتب الموظفين' : 'Payroll';
@@ -678,17 +744,27 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
                 {/* Category */}
                 <div>
                   <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'التصنيف المحاسبي' : 'Ledger Category'}</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as ExpenseCategory)}
-                    className="w-full bg-white border border-slate-200 focus:border-emerald-500 text-slate-700 rounded-xl p-2.5 outline-none shadow-sm"
-                  >
-                    <option value="Rent">Rent</option>
-                    <option value="Payroll">Payroll</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Infrastructure">Infrastructure</option>
-                    <option value="Fees">Fees</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className="flex-1 bg-white border border-slate-200 focus:border-emerald-500 text-slate-700 rounded-xl p-2.5 outline-none shadow-sm font-bold"
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {lang === 'ar' ? c.nameAr : c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategoryModal(true)}
+                      title={lang === 'ar' ? 'إضافة تصنيف جديد' : 'Add New Category'}
+                      className="p-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-600 rounded-xl cursor-pointer transition active:scale-95 flex items-center justify-center shrink-0"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1057,6 +1133,81 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Add Custom Category Modal */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 bg-slate-950/45 backdrop-blur-xs flex items-center justify-center p-4 z-[60] overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-scale-in">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="text-start">
+                <h3 className="text-xs font-bold text-slate-800">
+                  {lang === 'ar' ? 'إضافة تصنيف مصروفات جديد' : 'Add New Expense Category'}
+                </h3>
+                <span className="text-[9px] text-slate-400">
+                  {lang === 'ar' ? 'إنشاء بند تصنيف لحسابات المصروفات العامة' : 'Create category log item for general expenditures'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCategoryModal(false)}
+                className="text-slate-400 hover:text-slate-650 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategory} className="p-4 space-y-4 text-start text-xs">
+              {/* Category EN */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  {lang === 'ar' ? 'اسم التصنيف بالإنجليزية:' : 'Category Name (English):'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={categoryNameEn}
+                  onChange={(e) => setCategoryNameEn(e.target.value)}
+                  placeholder="e.g. Marketing & Ads"
+                  className="w-full text-xs bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2.5 px-3 outline-hidden focus:ring-1 focus:ring-emerald-500 font-sans"
+                />
+              </div>
+
+              {/* Category AR */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  {lang === 'ar' ? 'اسم التصنيف بالعربية:' : 'Category Name (Arabic):'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={categoryNameAr}
+                  onChange={(e) => setCategoryNameAr(e.target.value)}
+                  placeholder="مثال: التسويق والإعلانات"
+                  className="w-full text-xs bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl py-2.5 px-3 outline-hidden focus:ring-1 focus:ring-emerald-500 font-sans"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 select-none">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategoryModal(false)}
+                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition duration-150 cursor-pointer active:scale-95"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition duration-150 cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'حفظ التصنيف' : 'Save Category'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

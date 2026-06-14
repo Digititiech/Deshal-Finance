@@ -53,7 +53,7 @@ export interface Expense {
   amount: number;
   date: string;
   branchId: string;
-  category: ExpenseCategory;
+  category: string;
   status: ExpenseStatus;
   attachmentUrl?: string; // Base64 data or mock URL
   fileName?: string;
