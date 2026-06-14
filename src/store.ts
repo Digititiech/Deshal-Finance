@@ -239,7 +239,23 @@ const INITIAL_SETTINGS: SystemSettings = {
   enableBranchIsolation: true,
   maxBranchesAllowed: 10,
   realTimeNotifications: true,
-  twoFactorAuth: false
+  twoFactorAuth: false,
+
+  // --- Email Integration Settings ---
+  emailHost: '',
+  emailPort: 587,
+  emailUser: '',
+  emailPassword: '',
+  emailFrom: '',
+  emailSecure: false,
+  emailSendInvoices: false,
+  emailSendReceipts: false,
+  emailSendReports: false,
+  emailReportsPeriod: 'Monthly',
+  emailReportsRecipient: '',
+  emailAlertOnLargeExpense: false,
+  emailAlertLargeExpenseAmount: 10000,
+  emailAlertOnRoleChange: false
 };
 
 const INITIAL_PRODUCTS: ProductItem[] = [
@@ -709,7 +725,21 @@ export const useDb = () => {
             enableBranchIsolation: sett.enable_branch_isolation,
             maxBranchesAllowed: sett.max_branches_allowed !== null && sett.max_branches_allowed !== undefined ? Number(sett.max_branches_allowed) : 10,
             realTimeNotifications: sett.real_time_notifications,
-            twoFactorAuth: sett.two_factor_auth
+            twoFactorAuth: sett.two_factor_auth,
+            emailHost: sett.email_host || '',
+            emailPort: sett.email_port !== null && sett.email_port !== undefined ? Number(sett.email_port) : 587,
+            emailUser: sett.email_user || '',
+            emailPassword: sett.email_password || '',
+            emailFrom: sett.email_from || '',
+            emailSecure: !!sett.email_secure,
+            emailSendInvoices: !!sett.email_send_invoices,
+            emailSendReceipts: !!sett.email_send_receipts,
+            emailSendReports: !!sett.email_send_reports,
+            emailReportsPeriod: sett.email_reports_period as any || 'Monthly',
+            emailReportsRecipient: sett.email_reports_recipient || '',
+            emailAlertOnLargeExpense: !!sett.email_alert_on_large_expense,
+            emailAlertLargeExpenseAmount: sett.email_alert_large_expense_amount !== null && sett.email_alert_large_expense_amount !== undefined ? Number(sett.email_alert_large_expense_amount) : 10000,
+            emailAlertOnRoleChange: !!sett.email_alert_on_role_change
           });
         }
 
@@ -1729,7 +1759,21 @@ export const useDb = () => {
       enable_branch_isolation: settings.enableBranchIsolation,
       max_branches_allowed: settings.maxBranchesAllowed,
       real_time_notifications: settings.realTimeNotifications,
-      two_factor_auth: settings.twoFactorAuth
+      two_factor_auth: settings.twoFactorAuth,
+      email_host: settings.emailHost || null,
+      email_port: settings.emailPort || null,
+      email_user: settings.emailUser || null,
+      email_password: settings.emailPassword || null,
+      email_from: settings.emailFrom || null,
+      email_secure: settings.emailSecure || false,
+      email_send_invoices: settings.emailSendInvoices || false,
+      email_send_receipts: settings.emailSendReceipts || false,
+      email_send_reports: settings.emailSendReports || false,
+      email_reports_period: settings.emailReportsPeriod || 'Monthly',
+      email_reports_recipient: settings.emailReportsRecipient || null,
+      email_alert_on_large_expense: settings.emailAlertOnLargeExpense || false,
+      email_alert_large_expense_amount: settings.emailAlertLargeExpenseAmount || 10000,
+      email_alert_on_role_change: settings.emailAlertOnRoleChange || false
     }).eq('id', 1);
 
     if (error) {

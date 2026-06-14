@@ -12,7 +12,8 @@ import {
   MapPin, 
   Save,
   HelpCircle,
-  UploadCloud
+  UploadCloud,
+  Mail
 } from 'lucide-react';
 
 interface SettingsModuleProps {
@@ -22,7 +23,7 @@ interface SettingsModuleProps {
   userRole?: UserRole;
 }
 
-type TabType = 'GENERAL' | 'COMPANY' | 'INVOICE_RECEIPT' | 'BRANCHES';
+type TabType = 'GENERAL' | 'COMPANY' | 'INVOICE_RECEIPT' | 'BRANCHES' | 'EMAIL';
 
 export const SettingsModule: React.FC<SettingsModuleProps> = ({
   systemSettings,
@@ -82,6 +83,22 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   const [realTimeNotifications, setRealTimeNotifications] = useState<boolean>(!!systemSettings.realTimeNotifications);
   const [twoFactorAuth, setTwoFactorAuth] = useState<boolean>(!!systemSettings.twoFactorAuth);
 
+  // --- Email Integration State ---
+  const [emailHost, setEmailHost] = useState(systemSettings.emailHost || '');
+  const [emailPort, setEmailPort] = useState<number>(systemSettings.emailPort ?? 587);
+  const [emailUser, setEmailUser] = useState(systemSettings.emailUser || '');
+  const [emailPassword, setEmailPassword] = useState(systemSettings.emailPassword || '');
+  const [emailFrom, setEmailFrom] = useState(systemSettings.emailFrom || '');
+  const [emailSecure, setEmailSecure] = useState<boolean>(!!systemSettings.emailSecure);
+  const [emailSendInvoices, setEmailSendInvoices] = useState<boolean>(!!systemSettings.emailSendInvoices);
+  const [emailSendReceipts, setEmailSendReceipts] = useState<boolean>(!!systemSettings.emailSendReceipts);
+  const [emailSendReports, setEmailSendReports] = useState<boolean>(!!systemSettings.emailSendReports);
+  const [emailReportsPeriod, setEmailReportsPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>(systemSettings.emailReportsPeriod || 'Monthly');
+  const [emailReportsRecipient, setEmailReportsRecipient] = useState(systemSettings.emailReportsRecipient || '');
+  const [emailAlertOnLargeExpense, setEmailAlertOnLargeExpense] = useState<boolean>(!!systemSettings.emailAlertOnLargeExpense);
+  const [emailAlertLargeExpenseAmount, setEmailAlertLargeExpenseAmount] = useState<number>(systemSettings.emailAlertLargeExpenseAmount ?? 10000);
+  const [emailAlertOnRoleChange, setEmailAlertOnRoleChange] = useState<boolean>(!!systemSettings.emailAlertOnRoleChange);
+
   const [notif, setNotif] = useState('');
 
   useEffect(() => {
@@ -123,6 +140,20 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     setMaxBranchesAllowed(systemSettings.maxBranchesAllowed ?? 10);
     setRealTimeNotifications(!!systemSettings.realTimeNotifications);
     setTwoFactorAuth(!!systemSettings.twoFactorAuth);
+    setEmailHost(systemSettings.emailHost || '');
+    setEmailPort(systemSettings.emailPort ?? 587);
+    setEmailUser(systemSettings.emailUser || '');
+    setEmailPassword(systemSettings.emailPassword || '');
+    setEmailFrom(systemSettings.emailFrom || '');
+    setEmailSecure(!!systemSettings.emailSecure);
+    setEmailSendInvoices(!!systemSettings.emailSendInvoices);
+    setEmailSendReceipts(!!systemSettings.emailSendReceipts);
+    setEmailSendReports(!!systemSettings.emailSendReports);
+    setEmailReportsPeriod(systemSettings.emailReportsPeriod || 'Monthly');
+    setEmailReportsRecipient(systemSettings.emailReportsRecipient || '');
+    setEmailAlertOnLargeExpense(!!systemSettings.emailAlertOnLargeExpense);
+    setEmailAlertLargeExpenseAmount(systemSettings.emailAlertLargeExpenseAmount ?? 10000);
+    setEmailAlertOnRoleChange(!!systemSettings.emailAlertOnRoleChange);
   }, [systemSettings]);
 
   const isEditable = userRole === 'Super Admin' || userRole === 'Admin';
@@ -170,7 +201,21 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         enableBranchIsolation,
         maxBranchesAllowed,
         realTimeNotifications,
-        twoFactorAuth
+        twoFactorAuth,
+        emailHost,
+        emailPort,
+        emailUser,
+        emailPassword,
+        emailFrom,
+        emailSecure,
+        emailSendInvoices,
+        emailSendReceipts,
+        emailSendReports,
+        emailReportsPeriod,
+        emailReportsRecipient,
+        emailAlertOnLargeExpense,
+        emailAlertLargeExpenseAmount,
+        emailAlertOnRoleChange
       });
 
       setNotif(lang === 'ar' ? 'تم حفظ كافة الإعدادات المتقدمة بنجاح!' : 'All advanced configurations applied successfully!');
@@ -185,7 +230,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     { id: 'GENERAL', label: 'General / Global', labelAr: 'الإعدادات العامة', icon: Sliders },
     { id: 'COMPANY', label: 'Company Profile', labelAr: 'ملف الشركة', icon: Building2 },
     { id: 'INVOICE_RECEIPT', label: 'Invoice & Receipt', labelAr: 'الفواتير والسندات', icon: FileText },
-    { id: 'BRANCHES', label: 'Branches Matrix', labelAr: 'الفروع والربط', icon: MapPin }
+    { id: 'BRANCHES', label: 'Branches Matrix', labelAr: 'الفروع والربط', icon: MapPin },
+    { id: 'EMAIL', label: 'Email Integration', labelAr: 'الربط والبريد الإلكتروني', icon: Mail }
   ];
 
   return (
@@ -962,6 +1008,243 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                     </div>
                   </label>
 
+                </div>
+              </div>
+            )}
+
+            {/* 6. EMAIL TAB */}
+            {activeSubTab === 'EMAIL' && (
+              <div className="space-y-6 text-start">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    {lang === 'ar' ? 'إإعدادات ربط البريد الصادر والتنبيهات' : 'Email SMTP & Notifications Routing'}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {lang === 'ar' ? 'ربط البوابة بخادم البريد الصادر SMTP لتفعيل إرسال الفواتير، السندات، التقارير الدورية وإشعارات الأمان والتدقيق' : 'Integrate your SMTP relay to enable automated dispatch of customer invoices, digital receipts, management reports, and security audits.'}
+                  </p>
+                </div>
+
+                {/* Section 1: SMTP Gateway Credentials */}
+                <div className="space-y-4">
+                  <span className="font-bold text-slate-700 block text-xxs uppercase tracking-wider">
+                    {lang === 'ar' ? '١. إعدادات خادم البريد الصادر (SMTP Relay)' : '1. SMTP Mail Server Configuration'}
+                  </span>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'عنوان خادم SMTP' : 'SMTP Server Host'}</label>
+                      <input
+                        type="text"
+                        disabled={!isEditable}
+                        value={emailHost}
+                        onChange={(e) => setEmailHost(e.target.value)}
+                        placeholder="e.g. smtp.gmail.com"
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'منفذ SMTP' : 'SMTP Port'}</label>
+                        <input
+                          type="number"
+                          disabled={!isEditable}
+                          value={emailPort}
+                          onChange={(e) => setEmailPort(parseInt(e.target.value) || 587)}
+                          placeholder="587"
+                          className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'اتصال آمن' : 'SSL/TLS Secure'}</label>
+                        <div className="mt-2.5">
+                          <label className="flex items-center space-x-1.5 space-x-reverse cursor-pointer">
+                            <input
+                              type="checkbox"
+                              disabled={!isEditable}
+                              checked={emailSecure}
+                              onChange={(e) => setEmailSecure(e.target.checked)}
+                              className="w-4 h-4 accent-emerald-600 rounded"
+                            />
+                            <span className="text-slate-700 font-medium">{lang === 'ar' ? 'تفعيل SSL' : 'Use SSL'}</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'اسم المستخدم للبريد' : 'SMTP Username'}</label>
+                      <input
+                        type="text"
+                        disabled={!isEditable}
+                        value={emailUser}
+                        onChange={(e) => setEmailUser(e.target.value)}
+                        placeholder="e.g. sender@example.com"
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'كلمة المرور للبريد' : 'SMTP Password'}</label>
+                      <input
+                        type="password"
+                        disabled={!isEditable}
+                        value={emailPassword}
+                        onChange={(e) => setEmailPassword(e.target.value)}
+                        placeholder="••••••••••••••••"
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'البريد المرسل المعتمد (اسم أو عنوان)' : 'From Display Sender Name & Email'}</label>
+                    <input
+                      type="text"
+                      disabled={!isEditable}
+                      value={emailFrom}
+                      onChange={(e) => setEmailFrom(e.target.value)}
+                      placeholder="e.g. Nexus Finance Treasury <finance@nexusco.com>"
+                      className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none font-semibold"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 2: Automated Outbox Dispatch Settings */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4 pt-4">
+                  <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">
+                    {lang === 'ar' ? '٢. خيارات الإرسال التلقائي للعملاء والشركاء' : '2. Automated Dispatch & Report Options'}
+                  </span>
+
+                  <div className="space-y-3">
+                    <label className="flex items-start space-x-3 space-x-reverse cursor-pointer">
+                      <input
+                        type="checkbox"
+                        disabled={!isEditable}
+                        checked={emailSendInvoices}
+                        onChange={(e) => setEmailSendInvoices(e.target.checked)}
+                        className="w-4 h-4 accent-emerald-600 rounded shrink-0 mt-0.5"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">{lang === 'ar' ? 'إرسال الفواتير للعملاء تلقائياً' : 'Auto Dispatch Invoices to Customers'}</span>
+                        <p className="text-slate-400 mt-0.5">{lang === 'ar' ? 'إرسال نسخة PDF من الفاتورة إلى البريد الإلكتروني المسجل للعميل فور اعتمادها بنجاح' : 'Automatically dispatch a bilingual PDF invoice copy to the customer contact email upon submission.'}</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start space-x-3 space-x-reverse cursor-pointer">
+                      <input
+                        type="checkbox"
+                        disabled={!isEditable}
+                        checked={emailSendReceipts}
+                        onChange={(e) => setEmailSendReceipts(e.target.checked)}
+                        className="w-4 h-4 accent-emerald-600 rounded shrink-0 mt-0.5"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">{lang === 'ar' ? 'إرسال سندات القبض للعملاء تلقائياً' : 'Auto Dispatch Payments Receipts'}</span>
+                        <p className="text-slate-400 mt-0.5">{lang === 'ar' ? 'إرسال سندات القبض أو إيصالات براءة الذمة فورياً للعميل عند ربط تحصيل مالي بالفاتورة' : 'Automatically dispatch secure payment receipt confirmations to client emails upon ledger payoffs.'}</p>
+                      </div>
+                    </label>
+
+                    <div className="border-t border-slate-200/60 pt-3 space-y-3">
+                      <label className="flex items-start space-x-3 space-x-reverse cursor-pointer">
+                        <input
+                          type="checkbox"
+                          disabled={!isEditable}
+                          checked={emailSendReports}
+                          onChange={(e) => setEmailSendReports(e.target.checked)}
+                          className="w-4 h-4 accent-emerald-600 rounded shrink-0 mt-0.5"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">{lang === 'ar' ? 'إرسال تقارير مالية دورية للمسؤولين' : 'Send Recurring Management Audit Reports'}</span>
+                          <p className="text-slate-400 mt-0.5">{lang === 'ar' ? 'إرسال ملخصات الحسابات، الأرباح والخسائر، وموازنة الفروع للبريد المسجل' : 'Compile and transmit automatic P&L balances, branch metrics, and tax summary tables to partners.'}</p>
+                        </div>
+                      </label>
+
+                      {emailSendReports && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-7 pr-7 pt-2">
+                          <div>
+                            <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'دورية إرسال التقرير' : 'Report Frequency'}</label>
+                            <select
+                              value={emailReportsPeriod}
+                              disabled={!isEditable}
+                              onChange={(e) => setEmailReportsPeriod(e.target.value as any)}
+                              className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl p-2 outline-none font-semibold"
+                            >
+                              <option value="Daily">{lang === 'ar' ? 'يومياً' : 'Daily'}</option>
+                              <option value="Weekly">{lang === 'ar' ? 'أسبوعياً' : 'Weekly'}</option>
+                              <option value="Monthly">{lang === 'ar' ? 'شهرياً' : 'Monthly'}</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-slate-500 block mb-1 font-bold">{lang === 'ar' ? 'بريد استلام التقارير (متعدد مفصول بفواصل)' : 'Recipient Emails (Comma-separated)'}</label>
+                            <input
+                              type="text"
+                              disabled={!isEditable}
+                              value={emailReportsRecipient}
+                              onChange={(e) => setEmailReportsRecipient(e.target.value)}
+                              placeholder="e.g. partner1@co.com, admin@co.com"
+                              className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2 outline-none font-mono text-xxs"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Audit & Security Alerts */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4 pt-4">
+                  <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">
+                    {lang === 'ar' ? '٣. إشعارات وتنبيهات التدقيق والأمان' : '3. Auditing Alert Rules'}
+                  </span>
+
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <label className="flex items-start space-x-3 space-x-reverse cursor-pointer">
+                        <input
+                          type="checkbox"
+                          disabled={!isEditable}
+                          checked={emailAlertOnLargeExpense}
+                          onChange={(e) => setEmailAlertOnLargeExpense(e.target.checked)}
+                          className="w-4 h-4 accent-emerald-600 rounded shrink-0 mt-0.5"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">{lang === 'ar' ? 'تنبيه فوري عند تسجيل مصروفات كبيرة' : 'Alert on Large Expense Outflows'}</span>
+                          <p className="text-slate-400 mt-0.5">{lang === 'ar' ? 'إرسال تنبيه بالبريد الإلكتروني للشركاء فور تسجيل أو طلب صرف مبلغ يتعدى العتبة المحددة' : 'Send an immediate secure notification to administration if any safe disbursement voucher exceeds threshold.'}</p>
+                        </div>
+                      </label>
+
+                      {emailAlertOnLargeExpense && (
+                        <div className="pl-7 pr-7 pt-2 flex items-center gap-3">
+                          <span className="text-slate-500 font-bold">{lang === 'ar' ? 'عتبة التنبيه المالي:' : 'Expense Alert Threshold Amount:'}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            disabled={!isEditable}
+                            value={emailAlertLargeExpenseAmount}
+                            onChange={(e) => setEmailAlertLargeExpenseAmount(parseFloat(e.target.value) || 10000)}
+                            className="w-32 bg-white border border-slate-200 text-slate-800 rounded-xl p-2 text-center font-mono font-bold"
+                          />
+                          <span className="text-slate-500 font-bold">{systemSettings.primaryCurrency || 'OMR'}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="flex items-start space-x-3 space-x-reverse cursor-pointer border-t border-slate-200/60 pt-3">
+                      <input
+                        type="checkbox"
+                        disabled={!isEditable}
+                        checked={emailAlertOnRoleChange}
+                        onChange={(e) => setEmailAlertOnRoleChange(e.target.checked)}
+                        className="w-4 h-4 accent-emerald-600 rounded shrink-0 mt-0.5"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800 block text-xxs uppercase tracking-wider">{lang === 'ar' ? 'تنبيه فوري عند تغيير أدوار الموظفين' : 'Alert on Personnel Role Changes'}</span>
+                        <p className="text-slate-400 mt-0.5">{lang === 'ar' ? 'إرسال تنبيه بريدي فوري للشركاء عند تعديل صلاحيات أو أدوار الموظفين لتجنب الاحتيال' : 'Transmit an audit email if any personnel role or database privileges are altered by an admin.'}</p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}

@@ -171,6 +171,22 @@ export interface SystemSettings {
   maxBranchesAllowed: number;
   realTimeNotifications: boolean;
   twoFactorAuth: boolean;
+
+  // --- Email Integration Settings ---
+  emailHost?: string;
+  emailPort?: number;
+  emailUser?: string;
+  emailPassword?: string;
+  emailFrom?: string;
+  emailSecure?: boolean;
+  emailSendInvoices?: boolean;
+  emailSendReceipts?: boolean;
+  emailSendReports?: boolean;
+  emailReportsPeriod?: 'Daily' | 'Weekly' | 'Monthly';
+  emailReportsRecipient?: string;
+  emailAlertOnLargeExpense?: boolean;
+  emailAlertLargeExpenseAmount?: number;
+  emailAlertOnRoleChange?: boolean;
 }
 
 export interface ProductItem {
