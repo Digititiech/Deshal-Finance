@@ -7,7 +7,7 @@ let amiriFontCache: string | null = null;
 async function getAmiriFontBase64(): Promise<string | null> {
   if (amiriFontCache) return amiriFontCache;
   try {
-    const url = 'https://cdn.jsdelivr.net/gh/googlefonts/amiri@main/fonts/ttf/Amiri-Regular.ttf';
+    const url = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = await res.arrayBuffer();
