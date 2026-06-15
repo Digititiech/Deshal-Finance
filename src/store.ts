@@ -685,7 +685,7 @@ export const useDb = () => {
         }
 
         // Load system settings
-        const { data: sett } = await supabase.from('system_settings').select('*').eq('id', 1).single();
+        const { data: sett } = await supabase.from('v_system_settings').select('*').eq('id', 1).single();
         if (sett) {
           setSystemSettings({
             companyName: sett.company_name,
@@ -729,7 +729,7 @@ export const useDb = () => {
             emailHost: sett.email_host || '',
             emailPort: sett.email_port !== null && sett.email_port !== undefined ? Number(sett.email_port) : 587,
             emailUser: sett.email_user || '',
-            emailPassword: sett.email_password || '',
+            emailPassword: sett.email_password_configured ? '••••••••' : '',
             emailFrom: sett.email_from || '',
             emailSecure: !!sett.email_secure,
             emailSendInvoices: !!sett.email_send_invoices,
@@ -1721,7 +1721,7 @@ export const useDb = () => {
   const updateSystemSettings = async (settings: SystemSettings) => {
     setSystemSettings(settings);
     
-    const { error } = await supabase.from('system_settings').update({
+    const updatePayload: any = {
       company_name: settings.companyName,
       company_name_ar: settings.companyNameAr,
       registration_no: settings.registrationNo,
@@ -1763,7 +1763,6 @@ export const useDb = () => {
       email_host: settings.emailHost || null,
       email_port: settings.emailPort || null,
       email_user: settings.emailUser || null,
-      email_password: settings.emailPassword || null,
       email_from: settings.emailFrom || null,
       email_secure: settings.emailSecure || false,
       email_send_invoices: settings.emailSendInvoices || false,
@@ -1774,7 +1773,13 @@ export const useDb = () => {
       email_alert_on_large_expense: settings.emailAlertOnLargeExpense || false,
       email_alert_large_expense_amount: settings.emailAlertLargeExpenseAmount || 10000,
       email_alert_on_role_change: settings.emailAlertOnRoleChange || false
-    }).eq('id', 1);
+    };
+
+    if (settings.emailPassword !== '••••••••') {
+      updatePayload.email_password = settings.emailPassword || null;
+    }
+
+    const { error } = await supabase.from('system_settings').update(updatePayload).eq('id', 1);
 
     if (error) {
       console.error("Error updating system settings in Supabase:", error);
