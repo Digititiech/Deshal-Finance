@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -12,9 +12,13 @@ import {
   Activity, 
   Check, 
   X,
-  FileText
+  FileText,
+  Mail,
+  Send,
+  Loader2
 } from 'lucide-react';
 import { FinancialAdjustment, Customer, Invoice, Branch, UserRole, SystemSettings } from '../types';
+import { supabase } from '../supabase';
 
 interface AdjustmentsModuleProps {
   adjustments: FinancialAdjustment[];
@@ -48,6 +52,146 @@ export const AdjustmentsModule: React.FC<AdjustmentsModuleProps> = ({
   const [filterStatus, setFilterStatus] = useState<'All' | 'Approved' | 'Pending' | 'Rejected'>('All');
   const [isAdding, setIsAdding] = useState(false);
   const [selectedAdjustment, setSelectedAdjustment] = useState<FinancialAdjustment | null>(null);
+
+  // --- Email Send State ---
+  const [emailTarget, setEmailTarget] = useState('');
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+
+  useEffect(() => {
+    if (selectedAdjustment) {
+      const cust = customers.find(c => c.id === selectedAdjustment.customerId);
+      setEmailTarget(cust ? cust.contactEmail : '');
+      setShowEmailInput(false);
+      setEmailError('');
+      setEmailSuccess('');
+    }
+  }, [selectedAdjustment, customers]);
+
+  const handleSendEmail = async () => {
+    if (!emailTarget.trim() || !emailTarget.includes('@')) {
+      setEmailError(lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    try {
+      const hubName = getBranchName(selectedAdjustment!.branchId);
+      const matchedCust = customers.find(c => c.id === selectedAdjustment!.customerId);
+      const customerName = matchedCust ? (lang === 'ar' ? matchedCust.nameAr : matchedCust.name) : 'Valued Customer';
+      
+      const noteTypeStr = selectedAdjustment!.type;
+      const noteTypeStrAr = selectedAdjustment!.type === 'Credit Note' ? 'إشعار دائن' : 'إشعار مدين';
+
+      const mailSubject = lang === 'ar' 
+        ? `${noteTypeStrAr} رسمي رقم: ${selectedAdjustment!.noteNumber}` 
+        : `Official ${noteTypeStr} Statement: ${selectedAdjustment!.noteNumber}`;
+
+      const getCurrencySymbol = () => {
+        const curr = systemSettings.primaryCurrency || 'USD';
+        switch (curr) {
+          case 'OMR': return lang === 'ar' ? ' ر.ع' : ' OMR';
+          case 'SAR': return lang === 'ar' ? ' ر.س' : ' SAR';
+          case 'EUR': return ' €';
+          case 'USD':
+          default: return ' $';
+        }
+      };
+
+      const formatWithCurrency = (val: number) => {
+        const sym = getCurrencySymbol();
+        const formatted = val.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        if ((systemSettings.primaryCurrency === 'SAR' || systemSettings.primaryCurrency === 'OMR') && lang === 'ar') {
+          return `${formatted}${sym}`;
+        }
+        return `${sym}${formatted}`;
+      };
+
+      const mailHtml = `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="background: #0f172a; padding: 24px; color: white; text-align: center;">
+            <h2 style="margin: 0; font-size: 20px;">${lang === 'ar' ? noteTypeStrAr : noteTypeStr}</h2>
+            <p style="margin: 4px 0 0 0; opacity: 0.9; font-family: monospace; font-size: 14px;">${selectedAdjustment!.noteNumber}</p>
+          </div>
+          
+          <div style="padding: 24px; background: #fafafa;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'منشأة الصرف:' : 'Corporation:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${lang === 'ar' ? systemSettings.companyNameAr : systemSettings.companyName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'موجه إلى العميل:' : 'Customer entity:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${customerName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'تاريخ السند:' : 'Issue Date:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-family: monospace;">${selectedAdjustment!.createdAt.split('T')[0]}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'الفرع المصدر:' : 'Branch office:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;">${hubName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'حالة السند:' : 'Voucher status:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-weight: bold;">${selectedAdjustment!.status}</td>
+              </tr>
+            </table>
+
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: right;">
+              <div>
+                <span style="font-size: 10px; color: #94a3b8; font-weight: bold; display: block; text-transform: uppercase;">${lang === 'ar' ? 'سبب التسوية والتعديل' : 'ADJUSTMENT REASON'}</span>
+                <p style="font-size: 11px; color: #475569; margin: 4px 0 0 0; font-style: italic;">
+                  ${(lang === 'ar' ? selectedAdjustment!.reasonAr : selectedAdjustment!.reason) || (lang === 'ar' ? 'تم قيد وتسجيل تسوية الحساب الجاري بنجاح' : 'Financial adjustment clearance recorded.')}
+                </p>
+               </div>
+               <div style="text-align: right; margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                 <span style="font-size: 10px; color: #94a3b8; font-weight: bold; display: block;">${lang === 'ar' ? 'القيمة الإجمالية للتسوية' : 'Adjustment Total Value'}</span>
+                 <span style="font-size: 16px; font-weight: bold; color: #0f172a; font-family: monospace; display: block; margin-top: 4px;">${formatWithCurrency(selectedAdjustment!.amount)}</span>
+               </div>
+            </div>
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 9px; color: #94a3b8; font-style: italic;">
+              <span style="font-weight: bold; display: block; margin-bottom: 2px; color: #64748b; not-italic;">${lang === 'ar' ? 'إقرار ومطابقة:' : 'Compliance Note:'}</span>
+              ${lang === 'ar' 
+                ? 'تم مراجعة واعتماد هذا المستند بموجب لوائح وسياسات التدقيق المالي للمنشأة.' 
+                : 'This adjustment was reviewed and approved under enterprise financial regulations.'}
+            </div>
+          </div>
+
+          <div style="background: #e2e8f0; padding: 12px; text-align: center; font-size: 10px; color: #64748b; font-family: monospace;">
+            Secured by Nexus Capital Audit System v3.1.0
+          </div>
+        </div>
+      `;
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: emailTarget,
+          subject: mailSubject,
+          text: `${noteTypeStr} voucher ${selectedAdjustment!.noteNumber} for ${customerName}. Amount: ${selectedAdjustment!.amount} OMR. Date: ${selectedAdjustment!.createdAt}.`,
+          html: mailHtml
+        }
+      });
+
+      if (error) throw error;
+
+      setEmailSuccess(lang === 'ar' ? 'تم إرسال السند بنجاح إلى البريد الإلكتروني!' : 'Adjustment dispatched successfully via email!');
+      setTimeout(() => {
+        setShowEmailInput(false);
+        setEmailSuccess('');
+      }, 3000);
+    } catch (err: any) {
+      setEmailError(lang === 'ar' ? 'فشل الإرسال: ' + (err.message || 'خطأ غير معروف') : 'Failed to send: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   // Form State
   const [type, setType] = useState<'Credit Note' | 'Debit Note'>('Credit Note');
@@ -770,8 +914,48 @@ export const AdjustmentsModule: React.FC<AdjustmentsModuleProps> = ({
                 )}
 
               </div>
-
             </div>
+
+            {/* Email dispatch drawer */}
+            {showEmailInput && (
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-start no-print">
+                <span className="font-bold text-slate-800 text-xxs uppercase tracking-wider block">
+                  {lang === 'ar' ? 'إرسال السند بالبريد الإلكتروني' : 'Email Voucher Dispatch'}
+                </span>
+                
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="email"
+                    value={emailTarget}
+                    onChange={(e) => setEmailTarget(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="flex-1 bg-white border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 outline-none font-mono"
+                    disabled={isSendingEmail}
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail}
+                    className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 border-0"
+                  >
+                    {isSendingEmail ? (
+                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>{lang === 'ar' ? 'إرسال' : 'Send'}</span>
+                  </button>
+                </div>
+
+                {emailError && (
+                  <p className="text-xxs text-rose-600 font-bold">{emailError}</p>
+                )}
+                {emailSuccess && (
+                  <p className="text-xxs text-emerald-600 font-bold">{emailSuccess}</p>
+                )}
+              </div>
+            )}
 
             {/* Bottom Actions footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0 text-xxs font-bold">
@@ -794,6 +978,14 @@ export const AdjustmentsModule: React.FC<AdjustmentsModuleProps> = ({
                 >
                   <Printer className="w-4 h-4" />
                   <span>{lang === 'ar' ? 'طباعة / PDF' : 'Print / PDF'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailInput(prev => !prev)}
+                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold cursor-pointer text-xs rounded-xl transition duration-100 flex items-center gap-1.5 shadow-sm font-sans"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'إرسال بريد' : 'Email'}</span>
                 </button>
                 <button
                   onClick={() => setSelectedAdjustment(null)}

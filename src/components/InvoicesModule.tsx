@@ -14,8 +14,12 @@ import {
   User, 
   Calendar, 
   Check, 
-  CreditCard 
+  CreditCard,
+  Mail,
+  Send,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '../supabase';
 
 interface InvoicesModuleProps {
   invoices: Invoice[];
@@ -73,6 +77,156 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
   const [showGuidelines, setShowGuidelines] = useState<boolean>(false);
   const [previewPaperSize, setPreviewPaperSize] = useState<'A4' | 'A5'>('A4');
   const isInsideIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+  // --- Email Send State ---
+  const [emailTarget, setEmailTarget] = useState('');
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+
+  useEffect(() => {
+    if (viewInvoice) {
+      const cust = customers.find(c => c.id === viewInvoice.customerId);
+      setEmailTarget(cust ? cust.contactEmail : '');
+      setShowEmailInput(false);
+      setEmailError('');
+      setEmailSuccess('');
+    }
+  }, [viewInvoice, customers]);
+
+  const handleSendEmail = async () => {
+    if (!emailTarget.trim() || !emailTarget.includes('@')) {
+      setEmailError(lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    try {
+      const cust = getCustomer(viewInvoice!.customerId);
+      const customerName = lang === 'ar' ? cust.nameAr : cust.name;
+      const hubName = getBranchName(viewInvoice!.branchId);
+
+      const mailSubject = lang === 'ar' 
+        ? `فاتورة مالية رسمية رقم: ${viewInvoice!.invoiceNumber}` 
+        : `Official Commercial Invoice - ${viewInvoice!.invoiceNumber}`;
+
+      const itemsHtml = viewInvoice!.items.map(item => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: left;">
+            ${lang === 'ar' ? item.descriptionAr : item.description}
+          </td>
+          <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; font-family: monospace;">
+            ${formatWithCurrency(item.price)}
+          </td>
+          <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; font-family: monospace;">
+            ${item.quantity}
+          </td>
+          <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: right; font-family: monospace; font-weight: bold;">
+            ${formatWithCurrency(item.price * item.quantity)}
+          </td>
+        </tr>
+      `).join('');
+
+      const mailHtml = `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="background: #059669; padding: 24px; color: white; text-align: center;">
+            <h2 style="margin: 0; font-size: 20px;">${lang === 'ar' ? 'فاتورة ضريبية رسمية' : 'Tax Invoice Statement'}</h2>
+            <p style="margin: 4px 0 0 0; opacity: 0.9; font-family: monospace; font-size: 14px;">${viewInvoice!.invoiceNumber}</p>
+          </div>
+          
+          <div style="padding: 24px; background: #fafafa;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'منشأة الصرف:' : 'Corporation:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${lang === 'ar' ? systemSettings.companyNameAr : systemSettings.companyName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'موجهة إلى:' : 'Billed To:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${customerName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'تاريخ الفاتورة:' : 'Issue Date:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-family: monospace;">${viewInvoice!.issueDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'تاريخ الاستحقاق:' : 'Due Date:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-family: monospace;">${viewInvoice!.dueDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'الفرع المصدر:' : 'Branch Office:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;">${hubName}</td>
+              </tr>
+            </table>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <thead>
+                <tr style="background: #e2e8f0; font-size: 10px; text-transform: uppercase;">
+                  <th style="padding: 8px; text-align: left;">${lang === 'ar' ? 'البند / الخدمة' : 'Service Item'}</th>
+                  <th style="padding: 8px; text-align: center;">${lang === 'ar' ? 'السعر' : 'Rate'}</th>
+                  <th style="padding: 8px; text-align: center;">${lang === 'ar' ? 'الكمية' : 'Qty'}</th>
+                  <th style="padding: 8px; text-align: right;">${lang === 'ar' ? 'المجموع' : 'Total'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: right;">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: #64748b;">
+                <span>${lang === 'ar' ? 'إجمالي المقبوض:' : 'Payments Credit:'}</span>
+                <span style="font-family: monospace; font-weight: bold; color: #059669;">${formatWithCurrency(viewInvoice!.paidAmount)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: #64748b;">
+                <span>${lang === 'ar' ? 'المبلغ المتبقي:' : 'Outstanding Debt:'}</span>
+                <span style="font-family: monospace; font-weight: bold; color: #e11d48;">${formatWithCurrency(viewInvoice!.totalAmount - viewInvoice!.paidAmount)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; border-top: 1px solid #e2e8f0; padding-top: 8px; color: #1e293b;">
+                <span>${lang === 'ar' ? 'المجموع الإجمالي:' : 'Billing Gross Sum:'}</span>
+                <span style="font-family: monospace;">${formatWithCurrency(viewInvoice!.totalAmount)}</span>
+              </div>
+            </div>
+
+            ${systemSettings.invoiceFooterTerms ? `
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 9px; color: #94a3b8; font-style: italic;">
+              <span style="font-weight: bold; display: block; margin-bottom: 2px; color: #64748b; not-italic;">${lang === 'ar' ? 'شروط الفاتورة:' : 'Terms:'}</span>
+              ${lang === 'ar' ? systemSettings.invoiceFooterTermsAr : systemSettings.invoiceFooterTerms}
+            </div>
+            ` : ''}
+          </div>
+
+          <div style="background: #e2e8f0; padding: 12px; text-align: center; font-size: 10px; color: #64748b; font-family: monospace;">
+            Secured by Nexus Capital Audit System v3.1.0
+          </div>
+        </div>
+      `;
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: emailTarget,
+          subject: mailSubject,
+          text: `Invoice Statement ${viewInvoice!.invoiceNumber} for ${customerName}. Total Owed: ${viewInvoice!.totalAmount} OMR. Date: ${viewInvoice!.issueDate}.`,
+          html: mailHtml
+        }
+      });
+
+      if (error) throw error;
+
+      setEmailSuccess(lang === 'ar' ? 'تم إرسال الفاتورة بنجاح إلى البريد الإلكتروني!' : 'Invoice dispatched successfully via email!');
+      setTimeout(() => {
+        setShowEmailInput(false);
+        setEmailSuccess('');
+      }, 3000);
+    } catch (err: any) {
+      setEmailError(lang === 'ar' ? 'فشل الإرسال: ' + (err.message || 'خطأ غير معروف') : 'Failed to send: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   // Pay Capture State in Invoice View Dialog
   const [showCollectForm, setShowCollectForm] = useState(false);
@@ -1026,6 +1180,47 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
 
             </div>
 
+            {/* Email dispatch drawer */}
+            {showEmailInput && (
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-start no-print">
+                <span className="font-bold text-slate-800 text-xxs uppercase tracking-wider block">
+                  {lang === 'ar' ? 'إرسال الفاتورة بالبريد الإلكتروني للعميل' : 'Email Invoice Dispatch'}
+                </span>
+                
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="email"
+                    value={emailTarget}
+                    onChange={(e) => setEmailTarget(e.target.value)}
+                    placeholder="customer@example.com"
+                    className="flex-1 bg-white border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 outline-none font-mono"
+                    disabled={isSendingEmail}
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail}
+                    className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-750 hover:bg-emerald-700 text-white font-bold cursor-pointer text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 border-0"
+                  >
+                    {isSendingEmail ? (
+                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>{lang === 'ar' ? 'إرسال' : 'Send'}</span>
+                  </button>
+                </div>
+
+                {emailError && (
+                  <p className="text-xxs text-rose-600 font-bold">{emailError}</p>
+                )}
+                {emailSuccess && (
+                  <p className="text-xxs text-emerald-600 font-bold">{emailSuccess}</p>
+                )}
+              </div>
+            )}
+
             {/* Bottom Actions footer */}
             <div className="mt-4 pt-3 border-t border-slate-150 flex justify-between items-center text-xxs font-mono text-slate-400 shrink-0">
               <span className="flex items-center gap-1.5 font-bold text-slate-550">
@@ -1049,6 +1244,14 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
                 >
                   <Printer className="w-4 h-4" />
                   <span>{lang === 'ar' ? 'تأكيد وطباعة الفاتورة' : 'Print Invoice Statement'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailInput(prev => !prev)}
+                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold cursor-pointer text-xs rounded-xl transition duration-100 flex items-center gap-1.5 shadow-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'إرسال بريد' : 'Email'}</span>
                 </button>
                 <button
                   onClick={() => setViewInvoice(null)}

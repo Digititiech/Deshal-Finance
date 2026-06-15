@@ -113,6 +113,7 @@ export default function App() {
             filteredReceipts={db.filteredReceipts}
             invoices={db.invoices}
             branches={db.branches}
+            customers={db.customers}
             deleteReceipt={db.deleteReceipt}
             lang={db.language}
             userRole={db.currentUser?.role}

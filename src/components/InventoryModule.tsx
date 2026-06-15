@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Package, 
   Search, 
@@ -19,9 +19,13 @@ import {
   X,
   FileCheck2,
   RefreshCw,
-  Printer
+  Printer,
+  Mail,
+  Send,
+  Loader2
 } from 'lucide-react';
 import { ProductItem, InventoryMovement, Branch, UserRole, SystemSettings } from '../types';
+import { supabase } from '../supabase';
 
 interface InventoryModuleProps {
   products: ProductItem[];
@@ -53,6 +57,136 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   systemSettings
 }) => {
   const [viewingMovementVoucher, setViewingMovementVoucher] = useState<InventoryMovement | null>(null);
+
+  // --- Email Send State ---
+  const [emailTarget, setEmailTarget] = useState('');
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+
+  useEffect(() => {
+    if (viewingMovementVoucher) {
+      setEmailTarget('');
+      setShowEmailInput(false);
+      setEmailError('');
+      setEmailSuccess('');
+    }
+  }, [viewingMovementVoucher]);
+
+  const handleSendEmail = async () => {
+    if (!emailTarget.trim() || !emailTarget.includes('@')) {
+      setEmailError(lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    try {
+      const matchedProd = products.find(p => p.id === viewingMovementVoucher!.productId);
+      const productName = matchedProd ? (lang === 'ar' ? matchedProd.nameAr : matchedProd.name) : 'Unknown Stock Item';
+      const voucherNo = `ST-${viewingMovementVoucher!.id.slice(-6).toUpperCase()}`;
+
+      const mailSubject = lang === 'ar' 
+        ? `سند حركة مخزنية معتمد: ${voucherNo}` 
+        : `Official Stock Movement Voucher: ${voucherNo}`;
+
+      const sourceBranchName = viewingMovementVoucher!.sourceBranchId ? getBranchName(viewingMovementVoucher!.sourceBranchId) : '-';
+      const destBranchName = viewingMovementVoucher!.destinationBranchId ? getBranchName(viewingMovementVoucher!.destinationBranchId) : '-';
+      const activeBranchName = getBranchName(viewingMovementVoucher!.branchId);
+
+      const mailHtml = `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="background: #0d9488; padding: 24px; color: white; text-align: center;">
+            <h2 style="margin: 0; font-size: 20px;">${lang === 'ar' ? 'سند تحويل حركة مخزنية' : 'Official Stock Voucher'}</h2>
+            <p style="margin: 4px 0 0 0; opacity: 0.9; font-family: monospace; font-size: 14px;">${voucherNo}</p>
+          </div>
+          
+          <div style="padding: 24px; background: #fafafa;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'منشأة الصرف:' : 'Corporation:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${lang === 'ar' ? systemSettings.companyNameAr : systemSettings.companyName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'اسم الصنف المخزني:' : 'Stock Item Name:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${productName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'تاريخ الحركة:' : 'Movement Date:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-family: monospace;">${viewingMovementVoucher!.date}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'الفرع المستودعي:' : 'Branch Inventory:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;">${activeBranchName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'نوع الحركة:' : 'Movement Type:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-weight: bold; text-transform: uppercase;">${viewingMovementVoucher!.type}</td>
+              </tr>
+              ${viewingMovementVoucher!.type === 'TRANSFER' ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'من فرع:' : 'From Branch:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;">${sourceBranchName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'إلى فرع:' : 'To Branch:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;">${destBranchName}</td>
+              </tr>
+              ` : ''}
+            </table>
+
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: right;">
+              <div>
+                <span style="font-size: 10px; color: #94a3b8; font-weight: bold; display: block; text-transform: uppercase;">${lang === 'ar' ? 'بيان وملاحظات الحركة' : 'MOVEMENT ANNOTATION'}</span>
+                <p style="font-size: 11px; color: #475569; margin: 4px 0 0 0; font-style: italic;">
+                  ${(lang === 'ar' ? viewingMovementVoucher!.notesAr : viewingMovementVoucher!.notes) || (lang === 'ar' ? 'تم قيد وتسجيل حركة المخزون بنجاح' : 'Inventory stock movement recorded.')}
+                </p>
+               </div>
+               <div style="text-align: right; margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                 <span style="font-size: 10px; color: #94a3b8; font-weight: bold; display: block;">${lang === 'ar' ? 'الكمية المحولة' : 'Movement Quantity'}</span>
+                 <span style="font-size: 16px; font-weight: bold; color: #0d9488; font-family: monospace; display: block; margin-top: 4px;">${viewingMovementVoucher!.type === 'OUT' ? '-' : '+'}${viewingMovementVoucher!.quantity} Units</span>
+               </div>
+            </div>
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 9px; color: #94a3b8; font-style: italic;">
+              <span style="font-weight: bold; display: block; margin-bottom: 2px; color: #64748b; not-italic;">${lang === 'ar' ? 'إقرار ومطابقة:' : 'Compliance Note:'}</span>
+              ${lang === 'ar' 
+                ? 'تم مطابقة هذا التحويل دفترياً والتحقق من أرصدة المخازن طبقاً لجرد البوابة.' 
+                : 'Stock movement voucher verified and adjusted inside warehouse catalog.'}
+            </div>
+          </div>
+
+          <div style="background: #e2e8f0; padding: 12px; text-align: center; font-size: 10px; color: #64748b; font-family: monospace;">
+            Secured by Nexus Capital Audit System v3.1.0
+          </div>
+        </div>
+      `;
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: emailTarget,
+          subject: mailSubject,
+          text: `Stock movement voucher ${voucherNo} for product ID ${viewingMovementVoucher!.productId}. Quantity: ${viewingMovementVoucher!.quantity}. Date: ${viewingMovementVoucher!.date}.`,
+          html: mailHtml
+        }
+      });
+
+      if (error) throw error;
+
+      setEmailSuccess(lang === 'ar' ? 'تم إرسال السند بنجاح إلى البريد الإلكتروني!' : 'Stock voucher dispatched successfully via email!');
+      setTimeout(() => {
+        setShowEmailInput(false);
+        setEmailSuccess('');
+      }, 3000);
+    } catch (err: any) {
+      setEmailError(lang === 'ar' ? 'فشل الإرسال: ' + (err.message || 'خطأ غير معروف') : 'Failed to send: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
   const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'movements' | 'alerts'>('catalog');
   const [search, setSearch] = useState('');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'All' | 'Product' | 'Service'>('All');
@@ -1197,8 +1331,48 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 </div>
 
               </div>
-              
             </div>
+
+            {/* Email dispatch drawer */}
+            {showEmailInput && (
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-start no-print">
+                <span className="font-bold text-slate-800 text-xxs uppercase tracking-wider block">
+                  {lang === 'ar' ? 'إرسال السند بالبريد الإلكتروني' : 'Email Voucher Dispatch'}
+                </span>
+                
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="email"
+                    value={emailTarget}
+                    onChange={(e) => setEmailTarget(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="flex-1 bg-white border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 outline-none font-mono"
+                    disabled={isSendingEmail}
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail}
+                    className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 border-0"
+                  >
+                    {isSendingEmail ? (
+                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>{lang === 'ar' ? 'إرسال' : 'Send'}</span>
+                  </button>
+                </div>
+
+                {emailError && (
+                  <p className="text-xxs text-rose-600 font-bold">{emailError}</p>
+                )}
+                {emailSuccess && (
+                  <p className="text-xxs text-emerald-600 font-bold">{emailSuccess}</p>
+                )}
+              </div>
+            )}
 
             {/* Bottom Actions footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0 text-xxs font-bold">
@@ -1221,6 +1395,14 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>{lang === 'ar' ? 'طباعة / PDF' : 'Print / PDF'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailInput(prev => !prev)}
+                  className="py-2 px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold cursor-pointer text-xs rounded-lg transition duration-100 flex items-center gap-1 shadow-sm font-sans"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'إرسال بريد' : 'Email'}</span>
                 </button>
                 <button
                   onClick={() => setViewingMovementVoucher(null)}

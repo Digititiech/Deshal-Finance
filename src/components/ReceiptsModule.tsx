@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { Receipt, Invoice, Branch, UserRole, SystemSettings } from '../types';
-import { Search, Trash2, Eye, X, FileCheck2, Printer } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Receipt, Invoice, Branch, UserRole, SystemSettings, Customer } from '../types';
+import { Search, Trash2, Eye, X, FileCheck2, Printer, Mail, Send, Loader2 } from 'lucide-react';
+import { supabase } from '../supabase';
 
 interface ReceiptsModuleProps {
   receipts: Receipt[];
   filteredReceipts: Receipt[];
   invoices: Invoice[];
   branches: Branch[];
+  customers: Customer[];
   deleteReceipt: (id: string) => void;
   lang: 'en' | 'ar';
   userRole?: UserRole;
@@ -18,6 +20,7 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
   filteredReceipts,
   invoices,
   branches,
+  customers,
   deleteReceipt,
   lang,
   userRole,
@@ -26,6 +29,121 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+  
+  // --- Email Send State ---
+  const [emailTarget, setEmailTarget] = useState('');
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+
+  useEffect(() => {
+    if (selectedReceipt) {
+      const inv = invoices.find(i => i.id === selectedReceipt.invoiceId);
+      const cust = inv ? customers.find(c => c.id === inv.customerId) : null;
+      setEmailTarget(cust ? cust.contactEmail : '');
+      setShowEmailInput(false);
+      setEmailError('');
+      setEmailSuccess('');
+    }
+  }, [selectedReceipt, invoices, customers]);
+
+  const handleSendEmail = async () => {
+    if (!emailTarget.trim() || !emailTarget.includes('@')) {
+      setEmailError(lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    setEmailError('');
+    setEmailSuccess('');
+
+    try {
+      const inv = invoices.find(i => i.id === selectedReceipt!.invoiceId);
+      const cust = inv ? customers.find(c => c.id === inv.customerId) : null;
+      const customerName = cust ? (lang === 'ar' ? cust.nameAr : cust.name) : 'Valued Customer';
+      const hubName = getBranchName(selectedReceipt!.branchId);
+
+      const mailSubject = lang === 'ar' 
+        ? `سند قبض وتسوية مالية رقم: ${selectedReceipt!.receiptNumber}` 
+        : `Official Treasury Receipt Clearance - ${selectedReceipt!.receiptNumber}`;
+
+      const mailHtml = `
+        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="background: #059669; padding: 24px; color: white; text-align: center;">
+            <h2 style="margin: 0; font-size: 20px;">${lang === 'ar' ? 'سند قبض وتبرئة ذمة' : 'Treasury Payment Receipt'}</h2>
+            <p style="margin: 4px 0 0 0; opacity: 0.9; font-family: monospace; font-size: 14px;">${selectedReceipt!.receiptNumber}</p>
+          </div>
+          
+          <div style="padding: 24px; background: #fafafa;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'منشأة الصرف:' : 'Corporation:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;"><b>${lang === 'ar' ? systemSettings.companyNameAr : systemSettings.companyName}</b></td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'تاريخ المعاملة:' : 'Clearance Date:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-family: monospace;">${selectedReceipt!.date}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'قناة الدفع:' : 'Payment Route:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b; font-family: monospace;">${selectedReceipt!.paymentMethod}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;"><b>${lang === 'ar' ? 'الفرع المستلم:' : 'Auditing Hub:'}</b></td>
+                <td style="padding: 6px 0; text-align: right; color: #1e293b;">${hubName}</td>
+              </tr>
+            </table>
+
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+              <div style="text-align: left;">
+                <span style="font-size: 10px; color: #94a3b8; font-weight: bold; display: block; text-transform: uppercase;">${lang === 'ar' ? 'بند المقاصة' : 'Receipt Annotation'}</span>
+                <p style="font-size: 11px; color: #475569; margin: 4px 0 0 0; font-style: italic;">
+                  ${selectedReceipt!.notes || (lang === 'ar' ? 'تم تحصيل الدفعة المالية بنجاح' : 'Payment received and cleared.')}
+                </p>
+               </div>
+               <div style="text-align: right; margin-left: 20px; border-left: 1px solid #e2e8f0; padding-left: 16px;">
+                 <span style="font-size: 10px; color: #94a3b8; font-weight: bold; display: block;">${lang === 'ar' ? 'المبلغ المستلم' : 'Amount Paid'}</span>
+                 <span style="font-size: 16px; font-weight: bold; color: #059669; font-family: monospace; display: block; margin-top: 4px;">+${formatWithCurrency(selectedReceipt!.amount)}</span>
+               </div>
+            </div>
+
+            ${systemSettings.receiptFooterTerms ? `
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 9px; color: #94a3b8; font-style: italic;">
+              <span style="font-weight: bold; display: block; margin-bottom: 2px; color: #64748b; not-italic;">${lang === 'ar' ? 'شروط السند:' : 'Terms:'}</span>
+              ${lang === 'ar' ? systemSettings.receiptFooterTermsAr : systemSettings.receiptFooterTerms}
+            </div>
+            ` : ''}
+          </div>
+
+          <div style="background: #e2e8f0; padding: 12px; text-align: center; font-size: 10px; color: #64748b; font-family: monospace;">
+            Secured by Nexus Capital Audit System v3.1.0
+          </div>
+        </div>
+      `;
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: emailTarget,
+          subject: mailSubject,
+          text: `Treasury Payment Receipt Clearance ${selectedReceipt!.receiptNumber} for ${customerName}. Amount: ${selectedReceipt!.amount} OMR. Date: ${selectedReceipt!.date}.`,
+          html: mailHtml
+        }
+      });
+
+      if (error) throw error;
+
+      setEmailSuccess(lang === 'ar' ? 'تم إرسال السند بنجاح إلى البريد الإلكتروني!' : 'Receipt dispatched successfully via email!');
+      setTimeout(() => {
+        setShowEmailInput(false);
+        setEmailSuccess('');
+      }, 3000);
+    } catch (err: any) {
+      setEmailError(lang === 'ar' ? 'فشل الإرسال: ' + (err.message || 'خطأ غير معروف') : 'Failed to send: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   // Currency formatting helper
   const getCurrencySymbol = () => {
@@ -373,7 +491,48 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
               )}
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-150 flex justify-between items-center text-xxs font-mono text-slate-400">
+            {/* Email dispatch drawer */}
+            {showEmailInput && (
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-start no-print">
+                <span className="font-bold text-slate-800 text-xxs uppercase tracking-wider block">
+                  {lang === 'ar' ? 'إرسال السند بالبريد الإلكتروني للعميل' : 'Email Receipt Dispatch'}
+                </span>
+                
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="email"
+                    value={emailTarget}
+                    onChange={(e) => setEmailTarget(e.target.value)}
+                    placeholder="customer@example.com"
+                    className="flex-1 bg-white border border-slate-200 text-slate-800 text-xs rounded-xl p-2.5 outline-none font-mono"
+                    disabled={isSendingEmail}
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail}
+                    className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0 border-0"
+                  >
+                    {isSendingEmail ? (
+                      <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>{lang === 'ar' ? 'إرسال' : 'Send'}</span>
+                  </button>
+                </div>
+
+                {emailError && (
+                  <p className="text-xxs text-rose-600 font-bold">{emailError}</p>
+                )}
+                {emailSuccess && (
+                  <p className="text-xxs text-emerald-600 font-bold">{emailSuccess}</p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-5 pt-3 border-t border-slate-150 flex justify-between items-center text-xxs font-mono text-slate-400 no-print">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                 <span>{lang === 'ar' ? 'سند تحصيل موقع إلكترونياً' : 'Seal verified & recorded'}</span>
@@ -394,6 +553,14 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
                 >
                   <Printer className="w-4 h-4" />
                   <span>{lang === 'ar' ? 'طباعة / PDF' : 'Print / PDF'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailInput(prev => !prev)}
+                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold cursor-pointer text-xs rounded-xl transition duration-100 flex items-center gap-1.5 shadow-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'إرسال بريد' : 'Email'}</span>
                 </button>
                 <button
                   onClick={() => setSelectedReceipt(null)}
