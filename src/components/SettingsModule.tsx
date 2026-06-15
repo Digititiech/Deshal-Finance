@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SystemSettings, UserRole } from '../types';
+import { supabase } from '../supabase';
 import { 
   ShieldCheck, 
   Check, 
@@ -269,7 +270,25 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       await new Promise(resolve => setTimeout(resolve, 1000));
       setCurrentTestStep(3); // Sending email payload
       
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // Call Supabase Edge Function to send email securely
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: recipient,
+          subject: lang === 'ar' ? 'رسالة تجريبية - فحص اتصال البريد الإلكتروني' : 'SMTP Connection Test Email',
+          text: lang === 'ar' 
+            ? 'تم إرسال هذا البريد التجريبي بنجاح للتحقق من إعدادات الاتصال الآمن لخادم SMTP الخاص بكم على بوابتنا المالية.' 
+            : 'This test email was successfully sent to verify your secure SMTP connection configurations on our Financial Management Portal.',
+          html: lang === 'ar'
+            ? '<h3>نجاح فحص الاتصال!</h3><p>تم إرسال هذا البريد التجريبي بنجاح للتحقق من إعدادات الاتصال الآمن لخادم SMTP الخاص بكم على بوابتنا المالية.</p>'
+            : '<h3>SMTP Connection Verified!</h3><p>This test email was successfully sent to verify your secure SMTP connection configurations on our Financial Management Portal.</p>'
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Unknown error during edge function call');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       setTestSuccess(lang === 'ar'
         ? `تهانينا! نجح الاتصال بخادم SMTP وتم إرسال رسالة الاختبار بنجاح إلى ${recipient}.`
@@ -277,8 +296,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       );
     } catch (err: any) {
       setTestError(lang === 'ar'
-        ? 'فشل الاتصال: تعذر العثور على الخادم أو انتهت مهلة الاتصال.'
-        : 'Connection failed: Host unreachable or timeout exceeded.'
+        ? 'فشل الاتصال: ' + (err.message || 'تعذر العثور على الخادم أو انتهت مهلة الاتصال.')
+        : 'Connection failed: ' + (err.message || 'Host unreachable or timeout exceeded.')
       );
     } finally {
       setIsTestingConnection(false);

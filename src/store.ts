@@ -1062,6 +1062,37 @@ export const useDb = () => {
       payable_id: item.payableId || null
     });
 
+    // Security Alert for Large Expense (Bilingual)
+    const alertRecipient = systemSettings.emailReportsRecipient || systemSettings.companyEmail || systemSettings.emailUser;
+    if (systemSettings.emailAlertOnLargeExpense && item.amount >= (systemSettings.emailAlertLargeExpenseAmount || 10000) && alertRecipient) {
+      supabase.functions.invoke('send-email', {
+        body: {
+          to: alertRecipient,
+          subject: `⚠️ SECURITY ALERT / تنبيه أمني: Large Expense Logged / مصروفات كبيرة`,
+          text: `A large safe disbursement voucher of ${item.amount} ${systemSettings.primaryCurrency || 'OMR'} has been logged.\n\nDetails:\n- Entity: ${item.entity}\n- Category: ${item.category}\n- Date: ${item.date}\n- Description: ${item.description || 'No description'}\n\n---------------------------------\n\nتم تسجيل عملية صرف نقدية كبيرة في المنظومة بقيمة ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}.\n\nالتفاصيل:\n- الجهة: ${item.entityAr || item.entity}\n- الفئة: ${item.category}\n- التاريخ: ${item.date}\n- البيان: ${item.description || 'لا يوجد وصف'}\n\nيرجى مراجعة وتدقيق مستندات الصرف فوراً.`,
+          html: `
+            <h3>⚠️ Security Audit Warning / تنبيه أمني للتدقيق المالي</h3>
+            <p>A large safe disbursement voucher of <b>${item.amount} ${systemSettings.primaryCurrency || 'OMR'}</b> has been logged in the system.</p>
+            <ul>
+              <li><b>Entity:</b> ${item.entity}</li>
+              <li><b>Category:</b> ${item.category}</li>
+              <li><b>Date:</b> ${item.date}</li>
+              <li><b>Description:</b> ${item.description || 'No description'}</li>
+            </ul>
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
+            <p dir="rtl" style="text-align:right;">تم تسجيل عملية صرف نقدية كبيرة في المنظومة بقيمة <b>${item.amount} ${systemSettings.primaryCurrency || 'OMR'}</b>.</p>
+            <ul dir="rtl" style="text-align:right;">
+              <li><b>الجهة:</b> ${item.entityAr || item.entity}</li>
+              <li><b>الفئة:</b> ${item.category}</li>
+              <li><b>التاريخ:</b> ${item.date}</li>
+              <li><b>البيان:</b> ${item.description || 'لا يوجد وصف'}</li>
+            </ul>
+            <p>Please audit immediately. / يرجى مراجعة وتدقيق مستندات الصرف فوراً.</p>
+          `
+        }
+      }).catch(err => console.error("Error sending large expense email alert:", err));
+    }
+
     return newExp;
   };
 
@@ -1127,6 +1158,38 @@ export const useDb = () => {
       status: 'Unpaid',
       paid_amount: 0
     });
+
+    // Auto-dispatch invoice email if enabled (Bilingual)
+    const customer = customers.find(c => c.id === item.customerId);
+    if (systemSettings.emailSendInvoices && customer && customer.contactEmail) {
+      const itemsList = item.items.map(it => `- ${it.description} (Qty: ${it.quantity}) - ${it.price} ${systemSettings.primaryCurrency || 'OMR'}`).join('\n');
+      const itemsHtml = item.items.map(it => `<tr><td style="padding:8px; border:1px solid #ddd; text-align:left;">${it.description}</td><td style="padding:8px; border:1px solid #ddd; text-align:center;">${it.quantity}</td><td style="padding:8px; border:1px solid #ddd; text-align:right;">${it.price} ${systemSettings.primaryCurrency || 'OMR'}</td></tr>`).join('');
+      
+      supabase.functions.invoke('send-email', {
+        body: {
+          to: customer.contactEmail,
+          subject: `New Invoice Issued / تم إصدار فاتورة جديدة - ${invNum}`,
+          text: `Dear ${customer.name},\n\nAn invoice has been issued to your account.\nInvoice Number: ${invNum}\nTotal Amount: ${total} ${systemSettings.primaryCurrency || 'OMR'}\nDue Date: ${item.dueDate}\n\nItems:\n${itemsList}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nتم إصدار فاتورة جديدة لحسابكم.\nرقم الفاتورة: ${invNum}\nالمبلغ الإجمالي: ${total} ${systemSettings.primaryCurrency || 'OMR'}\nتاريخ الاستحقاق: ${item.dueDate}\n\nالبنود:\n${itemsList}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
+          html: `
+            <h3>New Invoice Issued / تم إصدار فاتورة جديدة</h3>
+            <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
+            <p>An invoice has been issued to your account. / تم إصدار فاتورة جديدة لحسابكم.</p>
+            <table style="width:100%; border-collapse:collapse;">
+              <tr style="background:#f2f2f2;">
+                <th style="padding:8px; border:1px solid #ddd; text-align:left;">Description / البيان</th>
+                <th style="padding:8px; border:1px solid #ddd; text-align:center;">Qty / الكمية</th>
+                <th style="padding:8px; border:1px solid #ddd; text-align:right;">Price / السعر</th>
+              </tr>
+              ${itemsHtml}
+            </table>
+            <p><b>Total Amount / المبلغ الإجمالي:</b> ${total} ${systemSettings.primaryCurrency || 'OMR'}<br/>
+            <b>Due Date / تاريخ الاستحقاق:</b> ${item.dueDate}</p>
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
+            <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
+          `
+        }
+      }).catch(err => console.error("Error sending invoice email:", err));
+    }
 
     const dbItems = item.items.map(it => ({
       invoice_id: id,
@@ -1194,6 +1257,34 @@ export const useDb = () => {
       branch_id: item.branchId,
       notes: item.notes || null
     });
+
+    // Auto-dispatch receipt email if enabled (Bilingual)
+    const invoice = invoices.find(inv => inv.id === item.invoiceId);
+    if (invoice) {
+      const customer = customers.find(c => c.id === invoice.customerId);
+      if (systemSettings.emailSendReceipts && customer && customer.contactEmail) {
+        supabase.functions.invoke('send-email', {
+          body: {
+            to: customer.contactEmail,
+            subject: `Payment Receipt / سند قبض وتأكيد تسوية - ${recNum}`,
+            text: `Dear ${customer.name},\n\nWe have received your payment for Invoice ${invoice.invoiceNumber}.\nReceipt Number: ${recNum}\nAmount Received: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nDate: ${item.date}\nPayment Method: ${item.paymentMethod}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nنؤكد استلام دفعتكم لتسوية الفاتورة رقم ${invoice.invoiceNumber}.\nرقم السند: ${recNum}\nالمبلغ المستلم: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nالتاريخ: ${item.date}\nطريقة السداد: ${item.paymentMethod}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
+            html: `
+              <h3>Payment Receipt / سند قبض إلكتروني</h3>
+              <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
+              <p>We have received your payment for Invoice <b>${invoice.invoiceNumber}</b>. / نؤكد استلام دفعتكم لتسوية الفاتورة رقم <b>${invoice.invoiceNumber}</b>.</p>
+              <p>
+                <b>Receipt Number / رقم السند:</b> ${recNum}<br/>
+                <b>Amount Received / المبلغ المستلم:</b> ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}<br/>
+                <b>Date / التاريخ:</b> ${item.date}<br/>
+                <b>Payment Method / طريقة السداد:</b> ${item.paymentMethod}
+              </p>
+              <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
+              <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
+            `
+          }
+        }).catch(err => console.error("Error sending receipt email:", err));
+      }
+    }
 
     return newRec;
   };
@@ -1324,6 +1415,31 @@ export const useDb = () => {
       email: item.email,
       avatar: item.avatar
     }).eq('id', item.id);
+
+    // Security Alert for Personnel Role Changes (Bilingual)
+    const existingEmp = employees.find(e => e.id === item.id);
+    const roleChanged = existingEmp && existingEmp.role !== item.role;
+    const alertRecipient = systemSettings.emailReportsRecipient || systemSettings.companyEmail || systemSettings.emailUser;
+
+    if (roleChanged && systemSettings.emailAlertOnRoleChange && alertRecipient) {
+      supabase.functions.invoke('send-email', {
+        body: {
+          to: alertRecipient,
+          subject: `🚨 SECURITY ALERT / تنبيه أمني: Personnel Role Changed / صلاحيات مستخدم`,
+          text: `A user role modification has been logged in the system.\n\nUser: ${item.name} (${item.email})\n- Previous Role: ${existingEmp.role}\n- New Role: ${item.role}\n\n---------------------------------\n\nتم تعديل وتحديث صلاحيات مستخدم في النظام المالي.\n\nالموظف: ${item.name} (${item.email})\n- الدور السابق: ${existingEmp.role}\n- الدور الجديد: ${item.role}\n\nيرجى مراجعة مصفوفة الصلاحيات الممنوحة فوراً.`,
+          html: `
+            <h3>🚨 Security Authorization Warning / تنبيه أمني - تعديل الصلاحيات الممنوحة</h3>
+            <p>A user role modification has been logged in the system. / تم تعديل وتحديث صلاحيات مستخدم في النظام المالي.</p>
+            <ul>
+              <li><b>User / الموظف:</b> ${item.name} (${item.email})</li>
+              <li><b>Previous Role / الدور السابق:</b> ${existingEmp.role}</li>
+              <li><b>New Role / الدور الجديد:</b> ${item.role}</li>
+            </ul>
+            <p>Please audit authorization policies immediately. / يرجى مراجعة مصفوفة الصلاحيات الممنوحة فوراً.</p>
+          `
+        }
+      }).catch(err => console.error("Error sending role change email alert:", err));
+    }
   };
 
   const deleteEmployee = async (id: string) => {
