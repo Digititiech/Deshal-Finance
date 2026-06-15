@@ -22,6 +22,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { generatePettyCashPdf } from '../utils/pdfGenerator';
+
 
 interface PettyCashModuleProps {
   vouchers: PettyCashVoucher[];
@@ -177,12 +179,22 @@ export const PettyCashModule: React.FC<PettyCashModuleProps> = ({
         </div>
       `;
 
+      const base64Pdf = await generatePettyCashPdf(viewingPaymentVoucher!, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
           text: `Petty cash voucher ${voucherNo} requested by ${viewingPaymentVoucher!.requestedBy}. Amount: ${viewingPaymentVoucher!.amount} OMR. Status: ${viewingPaymentVoucher!.status}.`,
-          html: mailHtml
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `PettyCash-${viewingPaymentVoucher!.id}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 

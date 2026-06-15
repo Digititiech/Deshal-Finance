@@ -19,6 +19,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { generateExpensePdf } from '../utils/pdfGenerator';
+
 
 interface ExpensesModuleProps {
   expenses: Expense[];
@@ -172,12 +174,22 @@ export const ExpensesModule: React.FC<ExpensesModuleProps> = ({
         </div>
       `;
 
+      const base64Pdf = await generateExpensePdf(viewingPaymentVoucher!, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
           text: `Expense payment voucher ${voucherNo} for ${viewingPaymentVoucher!.entity}. Amount: ${viewingPaymentVoucher!.amount} OMR. Date: ${viewingPaymentVoucher!.date}.`,
-          html: mailHtml
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `Expense-${viewingPaymentVoucher!.id}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 

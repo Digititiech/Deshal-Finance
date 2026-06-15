@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Receipt, Invoice, Branch, UserRole, SystemSettings, Customer } from '../types';
 import { Search, Trash2, Eye, X, FileCheck2, Printer, Mail, Send, Loader2 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { generateReceiptPdf } from '../utils/pdfGenerator';
+
 
 interface ReceiptsModuleProps {
   receipts: Receipt[];
@@ -122,12 +124,24 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
         </div>
       `;
 
+      if (!inv || !cust) throw new Error("Linked invoice or customer details not found / لم يتم العثور على الفاتورة أو بيانات العميل");
+
+      const base64Pdf = await generateReceiptPdf(selectedReceipt!, inv, cust, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
           text: `Treasury Payment Receipt Clearance ${selectedReceipt!.receiptNumber} for ${customerName}. Amount: ${selectedReceipt!.amount} OMR. Date: ${selectedReceipt!.date}.`,
-          html: mailHtml
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `Receipt-${selectedReceipt!.receiptNumber}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 

@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { generateInvoicePdf } from '../utils/pdfGenerator';
 
 interface InvoicesModuleProps {
   invoices: Invoice[];
@@ -205,12 +206,25 @@ export const InvoicesModule: React.FC<InvoicesModuleProps> = ({
         </div>
       `;
 
+      const customer = customers.find(c => c.id === viewInvoice!.customerId);
+      if (!customer) throw new Error("Linked customer details not found / لم يتم العثور على بيانات العميل المرتبط");
+
+      const base64Pdf = await generateInvoicePdf(viewInvoice!, customer, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
           text: `Invoice Statement ${viewInvoice!.invoiceNumber} for ${customerName}. Total Owed: ${viewInvoice!.totalAmount} OMR. Date: ${viewInvoice!.issueDate}.`,
-          html: mailHtml
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `Invoice-${viewInvoice!.invoiceNumber}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 

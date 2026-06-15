@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { FinancialAdjustment, Customer, Invoice, Branch, UserRole, SystemSettings } from '../types';
 import { supabase } from '../supabase';
+import { generateAdjustmentPdf } from '../utils/pdfGenerator';
+
 
 interface AdjustmentsModuleProps {
   adjustments: FinancialAdjustment[];
@@ -170,12 +172,22 @@ export const AdjustmentsModule: React.FC<AdjustmentsModuleProps> = ({
         </div>
       `;
 
+      const base64Pdf = await generateAdjustmentPdf(selectedAdjustment!, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
-          text: `${noteTypeStr} voucher ${selectedAdjustment!.noteNumber} for ${customerName}. Amount: ${selectedAdjustment!.amount} OMR. Date: ${selectedAdjustment!.createdAt}.`,
-          html: mailHtml
+          text: `${noteTypeStr} voucher ${selectedAdjustment!.noteNumber} for ${customerName}. Amount: ${selectedAdjustment!.amount} OMR. Date: ${selectedAdjustment!.date}.`,
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `${selectedAdjustment!.type.replace(' ', '')}-${selectedAdjustment!.noteNumber}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 

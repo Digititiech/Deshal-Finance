@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { ProductItem, InventoryMovement, Branch, UserRole, SystemSettings } from '../types';
 import { supabase } from '../supabase';
+import { generateInventoryMovementPdf } from '../utils/pdfGenerator';
+
 
 interface InventoryModuleProps {
   products: ProductItem[];
@@ -165,12 +167,22 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
         </div>
       `;
 
+      const base64Pdf = await generateInventoryMovementPdf(viewingMovementVoucher!, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
           text: `Stock movement voucher ${voucherNo} for product ID ${viewingMovementVoucher!.productId}. Quantity: ${viewingMovementVoucher!.quantity}. Date: ${viewingMovementVoucher!.date}.`,
-          html: mailHtml
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `StockMovement-${viewingMovementVoucher!.id}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 

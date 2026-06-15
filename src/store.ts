@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import { generateInvoicePdf, generateReceiptPdf } from './utils/pdfGenerator';
 import { 
   Branch, 
   User, 
@@ -1165,30 +1166,47 @@ export const useDb = () => {
       const itemsList = item.items.map(it => `- ${it.description} (Qty: ${it.quantity}) - ${it.price} ${systemSettings.primaryCurrency || 'OMR'}`).join('\n');
       const itemsHtml = item.items.map(it => `<tr><td style="padding:8px; border:1px solid #ddd; text-align:left;">${it.description}</td><td style="padding:8px; border:1px solid #ddd; text-align:center;">${it.quantity}</td><td style="padding:8px; border:1px solid #ddd; text-align:right;">${it.price} ${systemSettings.primaryCurrency || 'OMR'}</td></tr>`).join('');
       
-      supabase.functions.invoke('send-email', {
-        body: {
-          to: customer.contactEmail,
-          subject: `New Invoice Issued / تم إصدار فاتورة جديدة - ${invNum}`,
-          text: `Dear ${customer.name},\n\nAn invoice has been issued to your account.\nInvoice Number: ${invNum}\nTotal Amount: ${total} ${systemSettings.primaryCurrency || 'OMR'}\nDue Date: ${item.dueDate}\n\nItems:\n${itemsList}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nتم إصدار فاتورة جديدة لحسابكم.\nرقم الفاتورة: ${invNum}\nالمبلغ الإجمالي: ${total} ${systemSettings.primaryCurrency || 'OMR'}\nتاريخ الاستحقاق: ${item.dueDate}\n\nالبنود:\n${itemsList}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
-          html: `
-            <h3>New Invoice Issued / تم إصدار فاتورة جديدة</h3>
-            <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
-            <p>An invoice has been issued to your account. / تم إصدار فاتورة جديدة لحسابكم.</p>
-            <table style="width:100%; border-collapse:collapse;">
-              <tr style="background:#f2f2f2;">
-                <th style="padding:8px; border:1px solid #ddd; text-align:left;">Description / البيان</th>
-                <th style="padding:8px; border:1px solid #ddd; text-align:center;">Qty / الكمية</th>
-                <th style="padding:8px; border:1px solid #ddd; text-align:right;">Price / السعر</th>
-              </tr>
-              ${itemsHtml}
-            </table>
-            <p><b>Total Amount / المبلغ الإجمالي:</b> ${total} ${systemSettings.primaryCurrency || 'OMR'}<br/>
-            <b>Due Date / تاريخ الاستحقاق:</b> ${item.dueDate}</p>
-            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
-            <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
-          `
-        }
-      }).catch(err => console.error("Error sending invoice email:", err));
+      generateInvoicePdf(newInv, customer, systemSettings, language).then(base64Pdf => {
+        supabase.functions.invoke('send-email', {
+          body: {
+            to: customer.contactEmail,
+            subject: `New Invoice Issued / تم إصدار فاتورة جديدة - ${invNum}`,
+            text: `Dear ${customer.name},\n\nAn invoice has been issued to your account.\nInvoice Number: ${invNum}\nTotal Amount: ${total} ${systemSettings.primaryCurrency || 'OMR'}\nDue Date: ${item.dueDate}\n\nItems:\n${itemsList}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nتم إصدار فاتورة جديدة لحسابكم.\nرقم الفاتورة: ${invNum}\nالمبلغ الإجمالي: ${total} ${systemSettings.primaryCurrency || 'OMR'}\nتاريخ الاستحقاق: ${item.dueDate}\n\nالبنود:\n${itemsList}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
+            html: `
+              <h3>New Invoice Issued / تم إصدار فاتورة جديدة</h3>
+              <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
+              <p>An invoice has been issued to your account. / تم إصدار فاتورة جديدة لحسابكم.</p>
+              <table style="width:100%; border-collapse:collapse;">
+                <tr style="background:#f2f2f2;">
+                  <th style="padding:8px; border:1px solid #ddd; text-align:left;">Description / البيان</th>
+                  <th style="padding:8px; border:1px solid #ddd; text-align:center;">Qty / الكمية</th>
+                  <th style="padding:8px; border:1px solid #ddd; text-align:right;">Price / السعر</th>
+                </tr>
+                ${itemsHtml}
+              </table>
+              <p><b>Total Amount / المبلغ الإجمالي:</b> ${total} ${systemSettings.primaryCurrency || 'OMR'}<br/>
+              <b>Due Date / تاريخ الاستحقاق:</b> ${item.dueDate}</p>
+              <p>Please find the attached PDF statement for details. / يرجى الاطلاع على بيان الفاتورة المرفق بصيغة PDF للتفاصيل.</p>
+              <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
+              <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
+            `,
+            attachments: [
+              {
+                filename: `Invoice-${invNum}.pdf`,
+                content: base64Pdf,
+                encoding: 'base64',
+                contentType: 'application/pdf'
+              }
+            ]
+          }
+        }).then(({ data, error }) => {
+          if (error) {
+            console.error("Error sending invoice email in background invoke:", error);
+          } else {
+            console.log("Invoice email dispatched successfully:", data);
+          }
+        }).catch(err => console.error("Error sending invoice email:", err));
+      }).catch(err => console.error("Failed to generate PDF for invoice email:", err));
     }
 
     const dbItems = item.items.map(it => ({
@@ -1263,26 +1281,43 @@ export const useDb = () => {
     if (invoice) {
       const customer = customers.find(c => c.id === invoice.customerId);
       if (systemSettings.emailSendReceipts && customer && customer.contactEmail) {
-        supabase.functions.invoke('send-email', {
-          body: {
-            to: customer.contactEmail,
-            subject: `Payment Receipt / سند قبض وتأكيد تسوية - ${recNum}`,
-            text: `Dear ${customer.name},\n\nWe have received your payment for Invoice ${invoice.invoiceNumber}.\nReceipt Number: ${recNum}\nAmount Received: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nDate: ${item.date}\nPayment Method: ${item.paymentMethod}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nنؤكد استلام دفعتكم لتسوية الفاتورة رقم ${invoice.invoiceNumber}.\nرقم السند: ${recNum}\nالمبلغ المستلم: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nالتاريخ: ${item.date}\nطريقة السداد: ${item.paymentMethod}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
-            html: `
-              <h3>Payment Receipt / سند قبض إلكتروني</h3>
-              <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
-              <p>We have received your payment for Invoice <b>${invoice.invoiceNumber}</b>. / نؤكد استلام دفعتكم لتسوية الفاتورة رقم <b>${invoice.invoiceNumber}</b>.</p>
-              <p>
-                <b>Receipt Number / رقم السند:</b> ${recNum}<br/>
-                <b>Amount Received / المبلغ المستلم:</b> ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}<br/>
-                <b>Date / التاريخ:</b> ${item.date}<br/>
-                <b>Payment Method / طريقة السداد:</b> ${item.paymentMethod}
-              </p>
-              <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
-              <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
-            `
-          }
-        }).catch(err => console.error("Error sending receipt email:", err));
+        generateReceiptPdf(newRec, invoice, customer, systemSettings, language).then(base64Pdf => {
+          supabase.functions.invoke('send-email', {
+            body: {
+              to: customer.contactEmail,
+              subject: `Payment Receipt / سند قبض وتأكيد تسوية - ${recNum}`,
+              text: `Dear ${customer.name},\n\nWe have received your payment for Invoice ${invoice.invoiceNumber}.\nReceipt Number: ${recNum}\nAmount Received: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nDate: ${item.date}\nPayment Method: ${item.paymentMethod}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nنؤكد استلام دفعتكم لتسوية الفاتورة رقم ${invoice.invoiceNumber}.\nرقم السند: ${recNum}\nالمبلغ المستلم: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nالتاريخ: ${item.date}\nطريقة السداد: ${item.paymentMethod}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
+              html: `
+                <h3>Payment Receipt / سند قبض إلكتروني</h3>
+                <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
+                <p>We have received your payment for Invoice <b>${invoice.invoiceNumber}</b>. / نؤكد استلام دفعتكم لتسوية الفاتورة رقم <b>${invoice.invoiceNumber}</b>.</p>
+                <p>
+                  <b>Receipt Number / رقم السند:</b> ${recNum}<br/>
+                  <b>Amount Received / المبلغ المستلم:</b> ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}<br/>
+                  <b>Date / التاريخ:</b> ${item.date}<br/>
+                  <b>Payment Method / طريقة السداد:</b> ${item.paymentMethod}
+                </p>
+                <p>Please find the attached PDF receipt for your records. / يرجى الاطلاع على سند القبض المرفق بصيغة PDF للتوثيق.</p>
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
+                <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
+              `,
+              attachments: [
+                {
+                  filename: `Receipt-${recNum}.pdf`,
+                  content: base64Pdf,
+                  encoding: 'base64',
+                  contentType: 'application/pdf'
+                }
+              ]
+            }
+          }).then(({ data, error }) => {
+            if (error) {
+              console.error("Error sending receipt email in background invoke:", error);
+            } else {
+              console.log("Receipt email dispatched successfully:", data);
+            }
+          }).catch(err => console.error("Error sending receipt email:", err));
+        }).catch(err => console.error("Failed to generate PDF for receipt email:", err));
       }
     }
 

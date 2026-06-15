@@ -15,6 +15,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { generateIncomePdf } from '../utils/pdfGenerator';
+
 
 interface IncomeModuleProps {
   income: Income[];
@@ -174,12 +176,22 @@ export const IncomeModule: React.FC<IncomeModuleProps> = ({
         </div>
       `;
 
+      const base64Pdf = await generateIncomePdf(viewingVoucher!, systemSettings, lang);
+
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
           to: emailTarget,
           subject: mailSubject,
           text: `Revenue voucher ${voucherNo} from ${viewingVoucher!.source}. Amount: ${viewingVoucher!.amount} OMR. Date: ${viewingVoucher!.date}.`,
-          html: mailHtml
+          html: mailHtml,
+          attachments: [
+            {
+              filename: `Income-${viewingVoucher!.id}.pdf`,
+              content: base64Pdf,
+              encoding: 'base64',
+              contentType: 'application/pdf'
+            }
+          ]
         }
       });
 
