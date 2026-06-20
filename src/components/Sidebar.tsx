@@ -137,12 +137,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, lang,
     <aside className="w-64 max-w-xs shrink-0 bg-white border-r border-slate-200 flex flex-col h-full z-20 transition-all duration-300">
       {/* Brand area */}
       <div className="p-6 border-b border-slate-200 flex items-center space-x-3 space-x-reverse justify-start">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-mono text-xl font-bold shadow-xs shrink-0">
-          N
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-mono text-xl font-bold shadow-xs shrink-0 font-black">
+          D
         </div>
         <div className="text-left">
-          <h2 className="text-sm font-bold text-slate-800 tracking-wider">
-            {lang === 'ar' ? 'نيكسوس كابيتال' : 'NEXUS CO.'}
+          <h2 className="text-sm font-black text-slate-800 tracking-wider">
+            {lang === 'ar' ? 'ديشال المالية' : 'DESHAL FINANCE'}
           </h2>
           <span className="text-[10px] text-emerald-600 font-mono tracking-wider">
             {lang === 'ar' ? 'البوابة المالية الداخلية' : 'FINANCIAL PORTAL'}

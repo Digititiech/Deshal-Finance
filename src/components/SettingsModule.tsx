@@ -529,7 +529,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                     disabled={!isEditable}
                     value={companyEmail}
                     onChange={(e) => setCompanyEmail(e.target.value)}
-                    placeholder="billing@nexus.com"
+                    placeholder="billing@deshal.com"
                     className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none font-mono"
                   />
                 </div>
@@ -1186,7 +1186,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                       disabled={!isEditable}
                       value={emailFrom}
                       onChange={(e) => setEmailFrom(e.target.value)}
-                      placeholder="e.g. Nexus Finance Treasury <finance@nexusco.com>"
+                      placeholder="e.g. Deshal Finance Treasury <finance@deshal.com>"
                       className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl p-2.5 outline-none font-semibold"
                     />
                   </div>

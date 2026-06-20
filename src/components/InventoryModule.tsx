@@ -162,7 +162,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
           </div>
 
           <div style="background: #e2e8f0; padding: 12px; text-align: center; font-size: 10px; color: #64748b; font-family: monospace;">
-            Secured by Nexus Capital Audit System v3.1.0
+            Secured by Deshal Finance Audit System v3.1.0
           </div>
         </div>
       `;

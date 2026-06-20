@@ -73,7 +73,7 @@ const INITIAL_BRANCHES: Branch[] = [
 ];
 
 const INITIAL_CUSTOMERS: Customer[] = [
-  { id: 'cus_001', name: 'Nexus Corp Solutions', nameAr: 'شركة نيكسوس للحلول', code: 'NC', contactEmail: 'billing@nexuscorp.com', phone: '+1-555-0199', address: '12 Business Rd, NYC', addressAr: '١٢ طريق التجارة، نيويورك' },
+  { id: 'cus_001', name: 'Deshal Corp Solutions', nameAr: 'شركة ديشال للحلول', code: 'DC', contactEmail: 'billing@deshalcorp.com', phone: '+1-555-0199', address: '12 Business Rd, NYC', addressAr: '١٢ طريق التجارة، نيويورك' },
   { id: 'cus_002', name: 'Apex Global Ltd', nameAr: 'أبيكس العالمية المحدودة', code: 'AG', contactEmail: 'finance@apexglobal.com', phone: '+44-20-7946', address: '45 Canary Wharf, London', addressAr: '٤٥ كناري وارف، لندن' },
   { id: 'cus_003', name: 'Vanguard Systems', nameAr: 'فانغارد للأنظمة', code: 'VS', contactEmail: 'accounts@vanguardsys.com', phone: '+1-555-0142', address: '78 Tech Plaza, San Jose', addressAr: '٧٨ تيك بلازا، سان خوسيه' },
   { id: 'cus_004', name: 'Klarity Labs', nameAr: 'كلاريتي لابز', code: 'KL', contactEmail: 'treasury@klarity.io', phone: '+49-30-2213', address: '12 Schiffbauerdamm, Berlin', addressAr: '١٢ شيفباوردام، برلين' },
@@ -95,7 +95,7 @@ const INITIAL_EMPLOYEES: Employee[] = [
 const INITIAL_INCOME: Income[] = [
   { id: 'inc_001', source: 'Acme Corp Deposit', sourceAr: 'إيداع شركة Acme', amount: 85000, date: '2026-06-12', branchId: 'new_york_plaza', paymentMethod: 'Bank Transfer', description: 'Q2 Sales Payment', descriptionAr: 'دفعة مبيعات الربع الثاني' },
   { id: 'inc_002', source: 'TechFlow Solutions', sourceAr: 'تك فلو للحلول', amount: 14250, date: '2026-06-11', branchId: 'riyadh_hq', paymentMethod: 'Bank Transfer', description: 'Consulting services', descriptionAr: 'الخدمات الاستشارية' },
-  { id: 'inc_003', source: 'Nexus Real Estate', sourceAr: 'نكسوس للعقارات', amount: 8900, date: '2026-06-10', branchId: 'new_york_plaza', paymentMethod: 'Corporate Credit', description: 'Commercial rent lease', descriptionAr: 'إيجار تجاري' },
+  { id: 'inc_003', source: 'Deshal Real Estate', sourceAr: 'ديشال للعقارات', amount: 8900, date: '2026-06-10', branchId: 'new_york_plaza', paymentMethod: 'Corporate Credit', description: 'Commercial rent lease', descriptionAr: 'إيجار تجاري' },
   { id: 'inc_004', source: 'Culina Group', sourceAr: 'مجموعة كولينا', amount: 1240.5, date: '2026-06-09', branchId: 'london_financial', paymentMethod: 'Cash', description: 'Event catering deposit', descriptionAr: 'تأمين تموين الفعاليات' },
   { id: 'inc_005', source: 'Health Bridge Intl.', sourceAr: 'هيلث بريدج الدولية', amount: 22400, date: '2026-06-08', branchId: 'riyadh_hq', paymentMethod: 'Bank Transfer', description: 'Implementation phase 1', descriptionAr: 'مرحلة التنفيذ الأولى' },
   { id: 'inc_006', source: 'Swift Logistics', sourceAr: 'سويفت للخدمات اللوجستية', amount: 5670, date: '2026-06-07', branchId: 'london_financial', paymentMethod: 'Bank Transfer', description: 'Distribution retainers', descriptionAr: 'أتعاب التوزيع' },
@@ -115,7 +115,7 @@ const INITIAL_INVOICES: Invoice[] = [
   {
     id: 'inv_001',
     invoiceNumber: 'INV-2023-001',
-    customerId: 'cus_001', // Nexus Corp
+    customerId: 'cus_001', // Deshal Corp
     branchId: 'new_york_plaza',
     issueDate: '2026-05-15',
     dueDate: '2026-06-25',
@@ -193,8 +193,8 @@ const INITIAL_RECEIPTS: Receipt[] = [
 
 const INITIAL_SETTINGS: SystemSettings = {
   // --- General Settings ---
-  companyName: 'Nexus Global Finance',
-  companyNameAr: 'نكسس العالمية للمالية',
+  companyName: 'Deshal Finance',
+  companyNameAr: 'ديشال المالية',
   registrationNo: 'REG-9921-2024-XF',
   logoUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDxPFJPUbTXVTeuuxzBY50Ec-BA8BByUOCCPfpJo5eu6KmfMFPK4oarc2uXpFTqb9JEUFIt3GVQ5drmaQqFK5W9usyR0P8DFy8ek3LWPpHJNf2uzQvjZZNyrhfjYPFI6nfwZbPhjN2f6Eniw0PgRw2ldQCHigeYpEmyIntXgjqaRAimwkgoed8Rb-xVWWRIE27m7UFIMXUI2vJWClsik_pAcnTeGQeTakpS-jlmMFhSm8tsGFuHtjlyBK1nagLhVQuuOE9ReHQu8TU',
   primaryCurrency: 'OMR',
@@ -206,7 +206,7 @@ const INITIAL_SETTINGS: SystemSettings = {
   companyAddress: 'Financial Plaza, level 42, Riyadh',
   companyAddressAr: 'برج المالية، الطابق ٤٢، العليا، الرياض',
   companyPhone: '+966-11-202-4000',
-  companyEmail: 'finance@nexusco.com',
+  companyEmail: 'finance@deshal-finance.com',
   vatCompliance: true,
   vatRatePct: 15,
 
@@ -221,8 +221,8 @@ const INITIAL_SETTINGS: SystemSettings = {
 
   // --- Seal & Signature ---
   companySealUrl: '',
-  companySealName: 'NEXUS CO. AUDIT OFFICE',
-  companySealNameAr: 'مكتب التدقيق لشركة نكسس',
+  companySealName: 'DESHAL FINANCE AUDIT OFFICE',
+  companySealNameAr: 'مكتب التدقيق لشركة ديشال',
   authorizedSignatureUrl: '',
   authorizedSignatureName: 'Authorized Signatory - Operations Division',
   authorizedSignatureNameAr: 'التوقيع المعتمد - قطاع العمليات',
@@ -324,7 +324,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
 
 const INITIAL_MOVEMENTS: InventoryMovement[] = [
   { id: 'mov_001', productId: 'prod_001', type: 'In', quantity: 20, date: '2026-05-15', reference: 'PO-2026-001', notes: 'Supplier batch procurement', notesAr: 'شراء دفعة من المورد الرئيسي', branchId: 'riyadh_hq' },
-  { id: 'mov_002', productId: 'prod_001', type: 'Out', quantity: 6, date: '2026-06-01', reference: 'INV-2026-101', notes: 'Sold to Nexus Corp Solutions', notesAr: 'تم البيع لشركة نيكسوس للحلول', branchId: 'riyadh_hq' },
+  { id: 'mov_002', productId: 'prod_001', type: 'Out', quantity: 6, date: '2026-06-01', reference: 'INV-2026-101', notes: 'Sold to Deshal Corp Solutions', notesAr: 'تم البيع لشركة ديشال للحلول', branchId: 'riyadh_hq' },
   { id: 'mov_003', productId: 'prod_002', type: 'In', quantity: 10, date: '2026-05-18', reference: 'PO-2026-002', notes: 'Initial logistics warehousing', notesAr: 'تخزين أولي في المستودعات', branchId: 'london_financial' },
   { id: 'mov_004', productId: 'prod_002', type: 'Out', quantity: 2, date: '2026-06-05', reference: 'INV-2026-102', notes: 'Deployed at London tech hub office', notesAr: 'تشغيل وتفعيل بفرع لندن', branchId: 'london_financial' }
 ];
@@ -1188,7 +1188,7 @@ export const useDb = () => {
               <b>Due Date / تاريخ الاستحقاق:</b> ${item.dueDate}</p>
               <p>Please find the attached PDF statement for details. / يرجى الاطلاع على بيان الفاتورة المرفق بصيغة PDF للتفاصيل.</p>
               <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
-              <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
+              <p>Thank you, / شكراً لكم،<br/>Deshal Finance Treasury / خزينة ديشال المالية</p>
             `,
             attachments: [
               {
@@ -1286,7 +1286,7 @@ export const useDb = () => {
             body: {
               to: customer.contactEmail,
               subject: `Payment Receipt / سند قبض وتأكيد تسوية - ${recNum}`,
-              text: `Dear ${customer.name},\n\nWe have received your payment for Invoice ${invoice.invoiceNumber}.\nReceipt Number: ${recNum}\nAmount Received: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nDate: ${item.date}\nPayment Method: ${item.paymentMethod}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nنؤكد استلام دفعتكم لتسوية الفاتورة رقم ${invoice.invoiceNumber}.\nرقم السند: ${recNum}\nالمبلغ المستلم: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nالتاريخ: ${item.date}\nطريقة السداد: ${item.paymentMethod}\n\nشكراً لكم،\nخزينة نيكسوس كابيتال`,
+              text: `Dear ${customer.name},\n\nWe have received your payment for Invoice ${invoice.invoiceNumber}.\nReceipt Number: ${recNum}\nAmount Received: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nDate: ${item.date}\nPayment Method: ${item.paymentMethod}\n\n---------------------------------\n\nعزيزي ${customer.nameAr || customer.name}،\n\nنؤكد استلام دفعتكم لتسوية الفاتورة رقم ${invoice.invoiceNumber}.\nرقم السند: ${recNum}\nالمبلغ المستلم: ${item.amount} ${systemSettings.primaryCurrency || 'OMR'}\nالتاريخ: ${item.date}\nطريقة السداد: ${item.paymentMethod}\n\nشكراً لكم،\nخزينة ديشال المالية`,
               html: `
                 <h3>Payment Receipt / سند قبض إلكتروني</h3>
                 <p>Dear ${customer.name}, / عزيزي ${customer.nameAr || customer.name}،</p>
@@ -1299,7 +1299,7 @@ export const useDb = () => {
                 </p>
                 <p>Please find the attached PDF receipt for your records. / يرجى الاطلاع على سند القبض المرفق بصيغة PDF للتوثيق.</p>
                 <hr style="border:0; border-top:1px solid #eee; margin:20px 0;"/>
-                <p>Thank you, / شكراً لكم،<br/>Nexus Co. Treasury / خزينة نيكسوس كابيتال</p>
+                <p>Thank you, / شكراً لكم،<br/>Deshal Finance Treasury / خزينة ديشال المالية</p>
               `,
               attachments: [
                 {

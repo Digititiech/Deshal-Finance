@@ -83,13 +83,13 @@ export const AuthSim: React.FC<AuthSimProps> = ({ db, lang }) => {
 
         {/* Logo & Branding */}
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-mono text-2xl font-bold shadow-xl shadow-emerald-500/25 mb-5">
-            N
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-mono text-2xl font-bold shadow-xl shadow-emerald-500/25 mb-5 font-black">
+            D
           </div>
-          <span className="text-sm uppercase tracking-[0.3em] text-slate-300 font-bold">
-            NEXUS
+          <span className="text-sm uppercase tracking-[0.3em] text-slate-300 font-black">
+            DESHAL
           </span>
-          <span className="text-[10px] text-emerald-500 font-mono mt-1">AUDIT SUITE v1.2</span>
+          <span className="text-[10px] text-emerald-500 font-mono mt-1">FINANCIAL PORTAL v1.2</span>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-950/50 border border-emerald-900/50 text-emerald-400 text-[10px] font-semibold uppercase tracking-wider rounded-full mt-4">
             <Activity className="w-3 h-3 animate-pulse" />
             <span>{lang === 'ar' ? 'الدليل الشامل لاستشارات المشاريع' : 'Al Daleel Al Shamel Projects Consultations'}</span>
@@ -262,7 +262,7 @@ export const AuthSim: React.FC<AuthSimProps> = ({ db, lang }) => {
 
         {/* Footer */}
         <div className="mt-8 text-slate-600 text-[10px] font-mono text-center">
-          <span>© {new Date().getFullYear()} Nexus Audits · Powered by Al Daleel Al Shamel</span>
+          <span>© {new Date().getFullYear()} Deshal Finance · Powered by Al Daleel Al Shamel</span>
         </div>
       </div>
     </div>

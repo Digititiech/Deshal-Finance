@@ -119,7 +119,7 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
           </div>
 
           <div style="background: #e2e8f0; padding: 12px; text-align: center; font-size: 10px; color: #64748b; font-family: monospace;">
-            Secured by Nexus Capital Audit System v3.1.0
+            Secured by Deshal Finance Audit System v3.1.0
           </div>
         </div>
       `;
@@ -438,11 +438,11 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
                             className="w-24 h-24 rounded-full border-4 border-double border-emerald-600/90 bg-emerald-50/10 flex flex-col items-center justify-center text-center p-2 text-emerald-600/95 font-bold uppercase rotate-[-6deg] select-none shadow-sm/5 shrink-0"
                             style={{ fontSize: '7px', lineHeight: '1.1' }}
                           >
-                            <span className="tracking-widest block font-bold text-[6px] opacity-75">{lang === 'ar' ? 'البوابة المالية للمطابقة' : 'NEXUS FINANCE AUDIT'}</span>
+                            <span className="tracking-widest block font-bold text-[6px] opacity-75">{lang === 'ar' ? 'البوابة المالية للمطابقة' : 'DESHAL FINANCE AUDIT'}</span>
                             <div className="w-full border-t border-b border-emerald-600/50 py-0.5 my-1 text-[8px] font-extrabold tracking-tight truncate max-w-full px-0.5">
                               {lang === 'ar' 
-                                ? (systemSettings.companySealNameAr || 'خزينة نكسس') 
-                                : (systemSettings.companySealName || 'NEXUS GROUP')}
+                                ? (systemSettings.companySealNameAr || 'خزينة ديشال') 
+                                : (systemSettings.companySealName || 'DESHAL GROUP')}
                             </div>
                             <span className="text-[6px] bg-emerald-600 text-white rounded px-1 scale-90 py-0.2 block max-w-full truncate">{lang === 'ar' ? 'ختم معتمد' : 'APPROVED'}</span>
                           </div>
@@ -473,7 +473,7 @@ export const ReceiptsModule: React.FC<ReceiptsModuleProps> = ({
                           <div className="font-serif italic text-sm font-bold text-slate-700 opacity-80 py-1 pr-4 pl-8 border-b border-dashed border-slate-300 inline-block rotate-[-2deg] select-none">
                             {lang === 'ar' 
                               ? (systemSettings.authorizedSignatureNameAr || 'التوقيع المعتمد')
-                              : (systemSettings.authorizedSignatureName ? systemSettings.authorizedSignatureName.slice(0, 20) + '...' : 'Nexus Finance Auth')}
+                              : (systemSettings.authorizedSignatureName ? systemSettings.authorizedSignatureName.slice(0, 20) + '...' : 'Deshal Finance Auth')}
                           </div>
                         )}
                         

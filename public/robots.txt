@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://deshal-finance.vercel.app/sitemap.xml

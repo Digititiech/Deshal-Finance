@@ -166,7 +166,7 @@ function drawFooter(doc: jsPDF, y: number, settings: SystemSettings) {
 
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text('Secured by Nexus Capital Audit System v3.1.0', 15, y + 5);
+  doc.text('Secured by Deshal Finance Audit System v3.1.0', 15, y + 5);
   
   if (settings.companySealName) {
     doc.text(shapeArabic(settings.companySealNameAr || settings.companySealName), 195, y + 5, { align: 'right' });
