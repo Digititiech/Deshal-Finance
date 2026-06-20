@@ -8,7 +8,9 @@ import {
   Activity,
   ArrowLeft,
   CheckCircle,
-  Send
+  Send,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface AuthSimProps {
@@ -20,6 +22,7 @@ export const AuthSim: React.FC<AuthSimProps> = ({ db, lang }) => {
   const [view, setView] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +73,7 @@ export const AuthSim: React.FC<AuthSimProps> = ({ db, lang }) => {
     setView(target);
     setErrorMsg(null);
     setSuccessMsg(null);
+    setShowPassword(false);
   };
 
   return (
@@ -161,15 +165,27 @@ export const AuthSim: React.FC<AuthSimProps> = ({ db, lang }) => {
                   </div>
                   <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 text-slate-200 text-xs rounded-xl pl-10 pr-4 py-3.5 outline-none transition"
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 text-slate-200 text-xs rounded-xl pl-10 pr-10 py-3.5 outline-none transition"
                       style={{ direction: 'ltr' }}
                     />
                     <Lock className={`absolute ${lang === 'ar' ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-500 w-4.5 h-4.5`} />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className={`absolute ${lang === 'ar' ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350 transition cursor-pointer flex items-center justify-center`}
+                      title={lang === 'ar' ? (showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور') : (showPassword ? 'Hide password' : 'Show password')}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
